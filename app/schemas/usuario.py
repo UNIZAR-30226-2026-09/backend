@@ -51,3 +51,9 @@ class AmistadRead(BaseModel):
 
     class Config:
         from_attributes = True
+
+# TOKENS VIP (JWT)
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
