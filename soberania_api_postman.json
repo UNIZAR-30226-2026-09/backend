@@ -1,0 +1,180 @@
+{
+  "info": {
+    "name": "SOBERANÍA API v1",
+    "description": "Colección oficial de endpoints REST para el juego Soberanía.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "AQUI_PEGA_TU_TOKEN_JWT",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Usuarios y Auth",
+      "item": [
+        {
+          "name": "Registrar Usuario",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"username\": \"nick_aragon\",\n    \"email\": \"nick@soberania.es\",\n    \"password\": \"calvo1234\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/usuarios/registro",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "usuarios", "registro"]
+            }
+          }
+        },
+        {
+          "name": "Login (Obtener Token)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "username",
+                  "value": "nick_aragon",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "calvo1234",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/usuarios/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "usuarios", "login"]
+            }
+          }
+        },
+        {
+          "name": "Ver Mi Perfil",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/usuarios/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "usuarios", "me"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Mapa",
+      "item": [
+        {
+          "name": "Obtener Mapa Inicial",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/mapa",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "mapa"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Partidas y Amigos",
+      "item": [
+        {
+          "name": "Crear Partida",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"config_max_players\": 4,\n    \"config_visibility\": \"publica\",\n    \"config_timer_seconds\": 60\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/partidas",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "partidas"]
+            }
+          }
+        },
+        {
+          "name": "Solicitar Amistad",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"user_2\": \"roldi_goat\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/amigos/solicitar",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "amigos", "solicitar"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
