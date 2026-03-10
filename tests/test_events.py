@@ -11,7 +11,7 @@ class MockWebSocket:
         pass
 
     async def send_json(self, data):
-        print(f"📥 [{self.owner_name} recibe por WS]: {data}")
+        print(f"[{self.owner_name} recibe por WS]: {data}")
 
 
 async def probar_enrutador():

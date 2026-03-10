@@ -7,11 +7,11 @@ class MockWebSocket:
         self.owner_name = owner_name
 
     async def accept(self):
-        print(f"🔌 [Sistema] Conexión HTTP aceptada para {self.owner_name}")
+        print(f"[Sistema] Conexión HTTP aceptada para {self.owner_name}")
 
     async def send_json(self, data):
         # En lugar de enviarlo por internet, simplemente lo imprimimos en la consola
-        print(f"📥 [{self.owner_name} recibe]: {data}")
+        print(f"[{self.owner_name} recibe]: {data}")
 
 # 2. Nuestra función de prueba
 async def probar_logica():
