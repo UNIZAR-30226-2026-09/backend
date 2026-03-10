@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy import select
-from pydantic import BaseModel
 
+from app.core.map_state import map_calculator
 from app.core.logica_juego.validaciones import validar_ataque_convencional
 from app.core.logica_juego.combate import resolver_tirada
 from app.api.v1.endpoints.usuarios import obtener_usuario_actual
@@ -11,7 +11,7 @@ from app.models.usuario import User
 from app.models.partida import EstadoPartida
 from app.db.session import get_db
 from app.core.ws_manager import manager
-from app.schemas.combate import AtaqueCreate 
+from app.schemas.combate import AtaqueCreate, ResultadoCombate
 from app.schemas.estado_juego import TerritorioBase, JugadorBase
 
 router = APIRouter()
@@ -32,7 +32,7 @@ def obtener_datos_territorio(mapa: dict, territorio_id: str) -> TerritorioBase:
     return TerritorioBase(**mapa[territorio_id])
 
 
-def aplicar_bajas(t_origen: dict, t_destino: dict, resultado):
+def aplicar_bajas(t_origen: TerritorioBase, t_destino: TerritorioBase, resultado):
     t_origen.units -= resultado.bajas_atacante
     t_destino.units -= resultado.bajas_defensor
 
@@ -77,6 +77,7 @@ def verificar_movimiento_pendiente(jugadores: dict, jugador_id: str):
     
     return jugador_estado
 
+
 @router.post("/partidas/{partida_id}/ataque", status_code=status.HTTP_200_OK)
 async def ejecutar_ataque(
     partida_id: int,
@@ -92,8 +93,7 @@ async def ejecutar_ataque(
     t_origen = obtener_datos_territorio(estado_partida.mapa, ataque_in.territorio_origen_id)
     t_destino = obtener_datos_territorio(estado_partida.mapa, ataque_in.territorio_destino_id)
 
-    grafo_aragon = {}
-
+    # AQUÍ ESTÁ EL CAMBIO CLAVE: Usamos map_calculator en vez de grafo_aragon
     try:
         validar_ataque_convencional(
             estado_partida,
@@ -103,7 +103,7 @@ async def ejecutar_ataque(
             t_destino,
             ataque_in.tropas_a_mover,
             atacante_id,
-            grafo_aragon
+            map_calculator
         )
     except ValueError as e:
         raise HTTPException(400, str(e))
@@ -139,4 +139,17 @@ async def ejecutar_ataque(
         resultado
     )
 
+    return resultado
+
+
+# ----------------------------------------------------------------------------
+# RUTA DE TEST PARA COMPROBAR LOS DADOS (T9)
+# ----------------------------------------------------------------------------
+@router.get("/test-dados", response_model=ResultadoCombate)
+async def probar_dados_de_guerra(tropas_atacantes: int = 3, tropas_defensoras: int = 2):
+    """
+    Ruta para simular un combate puro sin necesidad de tener una partida en curso.
+    Le pasas cuántos atacan y cuántos defienden, y te devuelve las bajas.
+    """
+    resultado = resolver_tirada(tropas_atacantes, tropas_defensoras)
     return resultado
