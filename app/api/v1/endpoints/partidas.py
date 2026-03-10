@@ -15,7 +15,7 @@ from app.db.session import get_db
 # Cosas nuevas para empezar la partida
 from app.core.map_state import game_map_state
 from app.core.logica_juego.inicializacion import generar_reparto_inicial
-from app.core.logica_juego.maquina_estados import iniciar_temporizador
+from app.core.logica_juego.maquina_estados import iniciar_temporizador, tareas_en_segundo_plano
 
 router = APIRouter()
 
@@ -182,12 +182,35 @@ async def empezar_partida(
     db.add(nuevo_estado)
     await db.commit()
 
-    # Le damos al cronómetro invisible
-    asyncio.create_task(iniciar_temporizador(partida.id, FasePartida.REFUERZO, fin_fase))
+    # Le damos al cronómetro invisible y lo metemos en la lista fuerte
+    tarea_inicio = asyncio.create_task(iniciar_temporizador(partida.id, FasePartida.REFUERZO, fin_fase))
+    tareas_en_segundo_plano.add(tarea_inicio)
+    tarea_inicio.add_done_callback(tareas_en_segundo_plano.discard)
 
     return {
         "mensaje": "¡Aragón está en guerra!", 
         "partida_id": partida.id, 
         "turno_de": jugador_creador.usuario_id,
         "fase": "refuerzo"
+    }
+
+# ----------------------------------------------------------------------------
+# 5. VER ESTADO DE LA PARTIDA (La mirilla)
+# ----------------------------------------------------------------------------
+@router.get("/{partida_id}/estado")
+async def ver_estado_partida(
+    partida_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    query = select(EstadoPartida).where(EstadoPartida.partida_id == partida_id)
+    resultado = await db.execute(query)
+    estado = resultado.scalar_one_or_none()
+
+    if not estado:
+        raise HTTPException(status_code=404, detail="No hay estado para esta partida")
+
+    return {
+        "turno_de": estado.user_turno_actual,
+        "fase_actual": estado.fase_actual.value,
+        "fin_fase_utc": estado.fin_fase_actual
     }

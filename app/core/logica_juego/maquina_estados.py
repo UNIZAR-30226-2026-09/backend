@@ -9,6 +9,9 @@ from app.db.session import AsyncSessionLocal
 from app.models.partida import EstadoPartida, FasePartida, JugadoresPartida, EstadoJugador
 from app.core.ws_manager import manager
 
+# Guarda las tareas para que Python no las borre por error
+tareas_en_segundo_plano = set()
+
 TRANSICIONES = {
     FasePartida.REFUERZO: FasePartida.ATAQUE_CONVENCIONAL,
     FasePartida.ATAQUE_CONVENCIONAL: FasePartida.FORTIFICACION,
@@ -52,8 +55,11 @@ async def avanzar_fase(
         "fin_fase_utc": estado.fin_fase_actual.isoformat()
     }, partida_id)
 
-    # Lanzamos temporizador en background
-    asyncio.create_task(iniciar_temporizador(partida_id, nueva_fase, estado.fin_fase_actual))
+    # Lanzamos temporizador y lo guardamos a salvo
+    tarea_timer = asyncio.create_task(iniciar_temporizador(partida_id, nueva_fase, estado.fin_fase_actual))
+    tareas_en_segundo_plano.add(tarea_timer)
+    tarea_timer.add_done_callback(tareas_en_segundo_plano.discard)
+    
     return estado
 
 

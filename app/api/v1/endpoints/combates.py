@@ -2,10 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 from sqlalchemy import select
+from pydantic import BaseModel
 
 from app.core.map_state import map_calculator
 from app.core.logica_juego.validaciones import validar_ataque_convencional
 from app.core.logica_juego.combate import resolver_tirada
+from app.core.logica_juego.maquina_estados import avanzar_fase
 from app.api.v1.endpoints.usuarios import obtener_usuario_actual
 from app.models.usuario import User
 from app.models.partida import EstadoPartida
@@ -16,7 +18,11 @@ from app.schemas.estado_juego import TerritorioBase, JugadorBase
 
 router = APIRouter()
 
+# --- MODELOS DE DATOS ---
+class MoverConquistaIn(BaseModel):
+    tropas: int
 
+# --- FUNCIONES DE AYUDA ---
 async def obtener_estado_partida(db: AsyncSession, partida_id: int):
     query = select(EstadoPartida).where(EstadoPartida.partida_id == partida_id)
     resultado = await db.execute(query)
@@ -25,17 +31,14 @@ async def obtener_estado_partida(db: AsyncSession, partida_id: int):
         raise HTTPException(404, "Estado de partida no encontrado")
     return estado
 
-
 def obtener_datos_territorio(mapa: dict, territorio_id: str) -> TerritorioBase:
     if territorio_id not in mapa:
         raise HTTPException(status_code=404, detail="Territorio no encontrado en el mapa")
     return TerritorioBase(**mapa[territorio_id])
 
-
 def aplicar_bajas(t_origen: TerritorioBase, t_destino: TerritorioBase, resultado):
     t_origen.units -= resultado.bajas_atacante
     t_destino.units -= resultado.bajas_defensor
-
 
 def gestionar_victoria(
         t_destino: TerritorioBase, jugador_estado: JugadorBase, 
@@ -43,13 +46,10 @@ def gestionar_victoria(
     
     if resultado.victoria_atacante:
         t_destino.owner_id = atacante_id
-
-        # Mover tropas
+        # Activamos el flag para que el jugador esté obligado a mover tropas
         jugador_estado.movimiento_conquista_pendiente = True
-        
         jugador_estado.origen_conquista = origen_id
         jugador_estado.destino_conquista = destino_id
-
 
 async def notificar_resultado(partida_id: int, origen_id: str, destino_id: str, resultado):
     evento_ws = {
@@ -64,7 +64,6 @@ async def notificar_resultado(partida_id: int, origen_id: str, destino_id: str, 
     }
     await manager.broadcast(evento_ws, partida_id)
 
-
 def verificar_movimiento_pendiente(jugadores: dict, jugador_id: str):
     datos_jugador_dict = jugadores.get(jugador_id, {})
     jugador_estado = JugadorBase(**datos_jugador_dict)
@@ -74,10 +73,12 @@ def verificar_movimiento_pendiente(jugadores: dict, jugador_id: str):
              status_code=status.HTTP_400_BAD_REQUEST, 
              detail="Debes mover tropas al territorio conquistado antes de realizar otro ataque."
          )
-    
     return jugador_estado
 
 
+# ----------------------------------------------------------------------------
+# RUTA 1: ATACAR
+# ----------------------------------------------------------------------------
 @router.post("/partidas/{partida_id}/ataque", status_code=status.HTTP_200_OK)
 async def ejecutar_ataque(
     partida_id: int,
@@ -93,35 +94,21 @@ async def ejecutar_ataque(
     t_origen = obtener_datos_territorio(estado_partida.mapa, ataque_in.territorio_origen_id)
     t_destino = obtener_datos_territorio(estado_partida.mapa, ataque_in.territorio_destino_id)
 
-    # AQUÍ ESTÁ EL CAMBIO CLAVE: Usamos map_calculator en vez de grafo_aragon
     try:
         validar_ataque_convencional(
-            estado_partida,
-            ataque_in.territorio_origen_id,
-            t_origen,
-            ataque_in.territorio_destino_id,
-            t_destino,
-            ataque_in.tropas_a_mover,
-            atacante_id,
-            map_calculator
+            estado_partida, ataque_in.territorio_origen_id, t_origen,
+            ataque_in.territorio_destino_id, t_destino,
+            ataque_in.tropas_a_mover, atacante_id, map_calculator
         )
     except ValueError as e:
         raise HTTPException(400, str(e))
 
-    resultado = resolver_tirada(
-        ataque_in.tropas_a_mover,
-        t_destino.units
-    )
-
+    resultado = resolver_tirada(ataque_in.tropas_a_mover, t_destino.units)
     aplicar_bajas(t_origen, t_destino, resultado)
 
     gestionar_victoria(
-        t_destino, 
-        jugador_estado, 
-        atacante_id, 
-        ataque_in.territorio_origen_id, 
-        ataque_in.territorio_destino_id, 
-        resultado
+        t_destino, jugador_estado, atacante_id, 
+        ataque_in.territorio_origen_id, ataque_in.territorio_destino_id, resultado
     )
 
     estado_partida.mapa[ataque_in.territorio_origen_id] = t_origen.model_dump()
@@ -132,14 +119,91 @@ async def ejecutar_ataque(
     flag_modified(estado_partida, "jugadores")
     await db.commit()
 
-    await notificar_resultado(
-        partida_id, 
-        ataque_in.territorio_origen_id, 
-        ataque_in.territorio_destino_id, 
-        resultado
-    )
+    await notificar_resultado(partida_id, ataque_in.territorio_origen_id, ataque_in.territorio_destino_id, resultado)
 
     return resultado
+
+
+# ----------------------------------------------------------------------------
+# RUTA 2: MOVER TROPAS TRAS CONQUISTAR
+# ----------------------------------------------------------------------------
+@router.post("/partidas/{partida_id}/mover_conquista", status_code=status.HTTP_200_OK)
+async def mover_tropas_conquista(
+    partida_id: int,
+    datos: MoverConquistaIn,
+    usuario_actual: User = Depends(obtener_usuario_actual),
+    db: AsyncSession = Depends(get_db)
+):
+    estado_partida = await obtener_estado_partida(db, partida_id)
+    jugador_id = usuario_actual.username
+    
+    datos_jugador_dict = estado_partida.jugadores.get(jugador_id, {})
+    jugador_estado = JugadorBase(**datos_jugador_dict)
+
+    if not jugador_estado.movimiento_conquista_pendiente:
+        raise HTTPException(400, "No has conquistado nada recientemente")
+
+    origen_id = jugador_estado.origen_conquista
+    destino_id = jugador_estado.destino_conquista
+
+    t_origen = obtener_datos_territorio(estado_partida.mapa, origen_id)
+    t_destino = obtener_datos_territorio(estado_partida.mapa, destino_id)
+
+    if t_origen.units <= datos.tropas:
+        raise HTTPException(400, "Tienes que dejar al menos 1 guarnición en el territorio de origen")
+
+    # Movemos los monigotes
+    t_origen.units -= datos.tropas
+    t_destino.units += datos.tropas
+
+    # Limpiamos el chivato de conquista
+    jugador_estado.movimiento_conquista_pendiente = False
+    jugador_estado.origen_conquista = None
+    jugador_estado.destino_conquista = None
+
+    estado_partida.mapa[origen_id] = t_origen.model_dump()
+    estado_partida.mapa[destino_id] = t_destino.model_dump()
+    estado_partida.jugadores[jugador_id] = jugador_estado.model_dump()
+
+    flag_modified(estado_partida, "mapa")
+    flag_modified(estado_partida, "jugadores")
+    await db.commit()
+
+    # Avisamos al front
+    await manager.broadcast({
+        "tipo_evento": "MOVIMIENTO_CONQUISTA",
+        "origen": origen_id,
+        "destino": destino_id,
+        "tropas": datos.tropas,
+        "jugador": jugador_id
+    }, partida_id)
+
+    return {"mensaje": f"Has movilizado {datos.tropas} tropas a tu nuevo territorio"}
+
+
+# ----------------------------------------------------------------------------
+# RUTA 3: PASAR DE FASE A MANO
+# ----------------------------------------------------------------------------
+@router.post("/partidas/{partida_id}/pasar_fase", status_code=status.HTTP_200_OK)
+async def pasar_fase_manual(
+    partida_id: int,
+    usuario_actual: User = Depends(obtener_usuario_actual),
+    db: AsyncSession = Depends(get_db)
+):
+    estado_partida = await obtener_estado_partida(db, partida_id)
+    
+    if estado_partida.user_turno_actual != usuario_actual.username:
+        raise HTTPException(403, "Quieto ahí, no es tu turno")
+
+    nuevo_estado = await avanzar_fase(partida_id, db, estado_partida.fase_actual)
+    if not nuevo_estado:
+        raise HTTPException(400, "Error al avanzar la fase")
+
+    return {
+        "mensaje": "Fase completada", 
+        "nueva_fase": nuevo_estado.fase_actual.value,
+        "turno_de": nuevo_estado.user_turno_actual
+    }
 
 
 # ----------------------------------------------------------------------------
@@ -147,9 +211,5 @@ async def ejecutar_ataque(
 # ----------------------------------------------------------------------------
 @router.get("/test-dados", response_model=ResultadoCombate)
 async def probar_dados_de_guerra(tropas_atacantes: int = 3, tropas_defensoras: int = 2):
-    """
-    Ruta para simular un combate puro sin necesidad de tener una partida en curso.
-    Le pasas cuántos atacan y cuántos defienden, y te devuelve las bajas.
-    """
     resultado = resolver_tirada(tropas_atacantes, tropas_defensoras)
     return resultado
