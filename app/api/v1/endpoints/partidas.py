@@ -1,16 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
 import random
 import string
 import asyncio
 from datetime import datetime, timedelta, timezone
 
 from app.schemas.partida import PartidaCreate, PartidaRead, JugadorPartidaRead
-from app.models.partida import Partida, EstadosPartida, TipoVisibilidad, JugadoresPartida, ColorJugador, EstadoPartida, FasePartida
-from app.api.v1.endpoints.usuarios import obtener_usuario_actual
+from app.models.partida import EstadosPartida, ColorJugador, EstadoPartida, FasePartida
+from app.api.deps import obtener_usuario_actual
 from app.models.usuario import User
 from app.db.session import get_db
+from app.crud import crud_partidas
 
 # Cosas nuevas para empezar la partida
 from app.core.map_state import game_map_state
@@ -35,27 +35,12 @@ async def crear_partida(
 ):
     nuevo_codigo = generar_codigo_invitacion()
     
-    nueva_partida = Partida(
-        config_max_players=partida_in.config_max_players,
-        config_visibility=partida_in.config_visibility,
-        config_timer_seconds=partida_in.config_timer_seconds,
-        codigo_invitacion=nuevo_codigo,
-        estado=EstadosPartida.CREANDO
+    nueva_partida = await crud_partidas.crear_partida_y_creador(
+        db,
+        partida_in,
+        nuevo_codigo,
+        usuario_actual.username
     )
-    
-    db.add(nueva_partida)
-    await db.commit()
-    await db.refresh(nueva_partida)
-    
-    # El creador entra como jugador 1
-    creador = JugadoresPartida(
-        usuario_id=usuario_actual.username,
-        partida_id=nueva_partida.id,
-        turno=1,
-        color=ColorJugador.ROJO
-    )
-    db.add(creador)
-    await db.commit()
     
     return nueva_partida
 
@@ -67,12 +52,7 @@ async def listar_partidas_publicas(
     usuario_actual: User = Depends(obtener_usuario_actual),
     db: AsyncSession = Depends(get_db)
 ):
-    query = select(Partida).where(
-        Partida.estado == EstadosPartida.CREANDO,
-        Partida.config_visibility == TipoVisibilidad.PUBLICA
-    )
-    resultado = await db.execute(query)
-    return resultado.scalars().all()
+    return await crud_partidas.obtener_partidas_publicas(db)
 
 # ----------------------------------------------------------------------------
 # 3. UNIRSE A UNA PARTIDA
@@ -83,9 +63,7 @@ async def unirse_partida(
     usuario_actual: User = Depends(obtener_usuario_actual),
     db: AsyncSession = Depends(get_db)
 ):
-    query = select(Partida).where(Partida.codigo_invitacion == codigo)
-    resultado = await db.execute(query)
-    partida = resultado.scalar_one_or_none()
+    partida = await crud_partidas.obtener_partida_por_codigo(db, codigo)
 
     if not partida:
         raise HTTPException(status_code=404, detail="Ese código no existe, revisa bien")
@@ -93,9 +71,7 @@ async def unirse_partida(
     if partida.estado != EstadosPartida.CREANDO:
         raise HTTPException(status_code=400, detail="La partida ya ha empezado o está cerrada")
 
-    query_jugadores = select(JugadoresPartida).where(JugadoresPartida.partida_id == partida.id)
-    resultado_jugadores = await db.execute(query_jugadores)
-    jugadores_actuales = resultado_jugadores.scalars().all()
+    jugadores_actuales = await crud_partidas.obtener_jugadores_partida(db, partida.id)
 
     if len(jugadores_actuales) >= partida.config_max_players:
         raise HTTPException(status_code=400, detail="La sala está llena")
@@ -108,16 +84,13 @@ async def unirse_partida(
     todos_colores = set(ColorJugador)
     colores_libres = list(todos_colores - colores_usados)
     
-    nuevo_jugador = JugadoresPartida(
-        usuario_id=usuario_actual.username,
-        partida_id=partida.id,
-        turno=len(jugadores_actuales) + 1,
-        color=colores_libres[0]
+    nuevo_jugador = await crud_partidas.unir_jugador(
+        db,
+        usuario_actual.username,
+        partida.id,
+        len(jugadores_actuales) + 1,
+        colores_libres[0]
     )
-
-    db.add(nuevo_jugador)
-    await db.commit()
-    await db.refresh(nuevo_jugador)
 
     return nuevo_jugador
 
@@ -131,9 +104,7 @@ async def empezar_partida(
     db: AsyncSession = Depends(get_db)
 ):
     # Buscamos la partida
-    query = select(Partida).where(Partida.id == partida_id)
-    resultado = await db.execute(query)
-    partida = resultado.scalar_one_or_none()
+    partida = await crud_partidas.obtener_partida_por_id(db, partida_id)
 
     if not partida:
         raise HTTPException(status_code=404, detail="Partida no encontrada")
@@ -142,9 +113,7 @@ async def empezar_partida(
         raise HTTPException(status_code=400, detail="La partida ya ha empezado o está finalizada")
 
     # Sacamos a los que están sentados en la mesa
-    query_jugadores = select(JugadoresPartida).where(JugadoresPartida.partida_id == partida_id).order_by(JugadoresPartida.turno.asc())
-    res_jugadores = await db.execute(query_jugadores)
-    jugadores = res_jugadores.scalars().all()
+    jugadores = await crud_partidas.obtener_jugadores_partida(db, partida_id)
 
     if len(jugadores) < 2:
         raise HTTPException(status_code=400, detail="Mínimo 2 jugadores para darse de tortas")
@@ -153,9 +122,6 @@ async def empezar_partida(
     jugador_creador = next((j for j in jugadores if j.turno == 1), None)
     if not jugador_creador or jugador_creador.usuario_id != usuario_actual.username:
         raise HTTPException(status_code=403, detail="Tú no mandas aquí, solo el creador puede empezar")
-
-    # Chapamos la entrada a la sala
-    partida.estado = EstadosPartida.ACTIVA
 
     # Preparamos los datos para tu colega
     jugadores_ids = [j.usuario_id for j in jugadores]
@@ -179,8 +145,8 @@ async def empezar_partida(
         jugadores=estado_jugadores
     )
 
-    db.add(nuevo_estado)
-    await db.commit()
+    # Guardamos el inicio de la partida (estado ACTIVA + EstadoPartida)
+    await crud_partidas.guardar_inicio_partida(db, partida, nuevo_estado)
 
     # Le damos al cronómetro invisible y lo metemos en la lista fuerte
     tarea_inicio = asyncio.create_task(iniciar_temporizador(partida.id, FasePartida.REFUERZO, fin_fase))
@@ -202,9 +168,7 @@ async def ver_estado_partida(
     partida_id: int,
     db: AsyncSession = Depends(get_db)
 ):
-    query = select(EstadoPartida).where(EstadoPartida.partida_id == partida_id)
-    resultado = await db.execute(query)
-    estado = resultado.scalar_one_or_none()
+    estado = await crud_partidas.obtener_estado_partida(db, partida_id)
 
     if not estado:
         raise HTTPException(status_code=404, detail="No hay estado para esta partida")
@@ -212,5 +176,7 @@ async def ver_estado_partida(
     return {
         "turno_de": estado.user_turno_actual,
         "fase_actual": estado.fase_actual.value,
-        "fin_fase_utc": estado.fin_fase_actual
+        "fin_fase_utc": estado.fin_fase_actual,
+        "mapa": estado.mapa,
+        "jugadores": estado.jugadores
     }

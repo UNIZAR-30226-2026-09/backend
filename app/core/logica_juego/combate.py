@@ -59,3 +59,7 @@ def resolver_tirada(tropas_atacantes_enviadas: int, tropas_defensoras_totales: i
         victoria_atacante=victoria,
         tropas_restantes_defensor=tropas_restantes
     )
+
+def resolver_colocacion_tropas(jugador_estado, t_destino, tropas_a_poner: int):
+    jugador_estado.tropas_reserva -= tropas_a_poner
+    t_destino.units += tropas_a_poner

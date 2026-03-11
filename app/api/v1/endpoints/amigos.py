@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, and_
 
 from app.schemas.usuario import AmistadCreate, AmistadRead
-from app.models.usuario import Amistad, EstadoAmistad, User
-from app.api.v1.endpoints.usuarios import obtener_usuario_actual
+from app.models.usuario import User
+from app.api.deps import obtener_usuario_actual
 from app.db.session import get_db
+from app.crud import crud_amigos
 
 router = APIRouter()
 
@@ -23,32 +23,24 @@ async def solicitar_amistad(
         raise HTTPException(status_code=400, detail="No puedes enviarte una solicitud a ti mismo")
 
     # Mirar si el usuario existe
-    query_user = select(User).where(User.username == amistad_in.user_2)
-    res_user = await db.execute(query_user)
-    if not res_user.scalar_one_or_none():
+    if not await crud_amigos.verificar_usuario_existe(db, amistad_in.user_2):
         raise HTTPException(status_code=404, detail="El usuario al que intentas agregar no existe")
 
     # Comprobar si ya existe relación
-    query_amistad = select(Amistad).where(
-        or_(
-            and_(Amistad.user_1 == usuario_actual.username, Amistad.user_2 == amistad_in.user_2),
-            and_(Amistad.user_1 == amistad_in.user_2, Amistad.user_2 == usuario_actual.username)
-        )
+    relacion_existente = await crud_amigos.obtener_relacion_existente(
+        db, 
+        usuario_actual.username, 
+        amistad_in.user_2
     )
-    res_amistad = await db.execute(query_amistad)
-    if res_amistad.scalar_one_or_none():
+    if relacion_existente:
         raise HTTPException(status_code=400, detail="Ya existe una relación o solicitud pendiente con este usuario")
 
     # Todo limpio, creamos solicitud
-    nueva_amistad = Amistad(
-        user_1=usuario_actual.username,
-        user_2=amistad_in.user_2,
-        estado=EstadoAmistad.PENDIENTE
+    nueva_amistad = await crud_amigos.crear_solicitud(
+        db,
+        usuario_actual.username,
+        amistad_in.user_2
     )
-    
-    db.add(nueva_amistad)
-    await db.commit()
-    await db.refresh(nueva_amistad)
 
     return nueva_amistad
 
@@ -61,12 +53,7 @@ async def ver_solicitudes(
     db: AsyncSession = Depends(get_db)
 ):
     # Buscamos las que me han mandado a mí (yo soy el user_2) y están pendientes
-    query = select(Amistad).where(
-        Amistad.user_2 == usuario_actual.username,
-        Amistad.estado == EstadoAmistad.PENDIENTE
-    )
-    resultado = await db.execute(query)
-    return resultado.scalars().all()
+    return await crud_amigos.obtener_solicitudes_pendientes(db, usuario_actual.username)
 
 # ----------------------------------------------------------------------------
 # 3. ACEPTAR AMISTAD
@@ -78,23 +65,19 @@ async def aceptar_amistad(
     db: AsyncSession = Depends(get_db)
 ):
     # Buscamos la solicitud específica
-    query = select(Amistad).where(
-        Amistad.user_1 == username_solicitante,
-        Amistad.user_2 == usuario_actual.username,
-        Amistad.estado == EstadoAmistad.PENDIENTE
+    amistad = await crud_amigos.obtener_solicitud_especifica(
+        db,
+        username_solicitante,
+        usuario_actual.username
     )
-    resultado = await db.execute(query)
-    amistad = resultado.scalar_one_or_none()
 
     if not amistad:
         raise HTTPException(status_code=404, detail="No hay ninguna solicitud pendiente de este usuario")
 
-    # Le cambiamos el estado
-    amistad.estado = EstadoAmistad.ACEPTADA
-    await db.commit()
-    await db.refresh(amistad)
+    # Aceptamos la solicitud
+    amistad_aceptada = await crud_amigos.aceptar_solicitud(db, amistad)
 
-    return amistad
+    return amistad_aceptada
 
 # ----------------------------------------------------------------------------
 # 4. VER MI LISTA DE AMIGOS
@@ -105,9 +88,4 @@ async def listar_amigos(
     db: AsyncSession = Depends(get_db)
 ):
     # Buscamos donde salga yo (ya sea como user_1 o user_2) y el estado sea aceptada
-    query = select(Amistad).where(
-        or_(Amistad.user_1 == usuario_actual.username, Amistad.user_2 == usuario_actual.username),
-        Amistad.estado == EstadoAmistad.ACEPTADA
-    )
-    resultado = await db.execute(query)
-    return resultado.scalars().all()
+    return await crud_amigos.obtener_lista_amigos(db, usuario_actual.username)

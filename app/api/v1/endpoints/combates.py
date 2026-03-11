@@ -1,20 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm.attributes import flag_modified
-from sqlalchemy import select
 from pydantic import BaseModel
 
 from app.core.map_state import map_calculator
 from app.core.logica_juego.validaciones import validar_ataque_convencional
 from app.core.logica_juego.combate import resolver_tirada
 from app.core.logica_juego.maquina_estados import avanzar_fase
-from app.api.v1.endpoints.usuarios import obtener_usuario_actual
+from app.api.deps import obtener_usuario_actual
 from app.models.usuario import User
-from app.models.partida import EstadoPartida
 from app.db.session import get_db
 from app.core.ws_manager import manager
 from app.schemas.combate import AtaqueCreate, ResultadoCombate
 from app.schemas.estado_juego import TerritorioBase, JugadorBase
+from app.crud import crud_combates
+from app.core.logica_juego.validaciones import validar_colocacion_tropas
+from app.core.logica_juego.combate import resolver_colocacion_tropas
 
 router = APIRouter()
 
@@ -22,11 +22,14 @@ router = APIRouter()
 class MoverConquistaIn(BaseModel):
     tropas: int
 
+class ColocarTropasIn(BaseModel):
+    territorio_id: str
+    tropas: int
+
 # --- FUNCIONES DE AYUDA ---
 async def obtener_estado_partida(db: AsyncSession, partida_id: int):
-    query = select(EstadoPartida).where(EstadoPartida.partida_id == partida_id)
-    resultado = await db.execute(query)
-    estado = resultado.scalar_one_or_none()
+    """Función adaptadora que llama al CRUD y lanza HTTPException si no existe."""
+    estado = await crud_combates.obtener_estado_partida(db, partida_id)
     if not estado:
         raise HTTPException(404, "Estado de partida no encontrado")
     return estado
@@ -115,9 +118,7 @@ async def ejecutar_ataque(
     estado_partida.mapa[ataque_in.territorio_destino_id] = t_destino.model_dump()
     estado_partida.jugadores[atacante_id] = jugador_estado.model_dump()
 
-    flag_modified(estado_partida, "mapa")
-    flag_modified(estado_partida, "jugadores")
-    await db.commit()
+    await crud_combates.guardar_estado_partida(db, estado_partida)
 
     await notificar_resultado(partida_id, ataque_in.territorio_origen_id, ataque_in.territorio_destino_id, resultado)
 
@@ -165,9 +166,7 @@ async def mover_tropas_conquista(
     estado_partida.mapa[destino_id] = t_destino.model_dump()
     estado_partida.jugadores[jugador_id] = jugador_estado.model_dump()
 
-    flag_modified(estado_partida, "mapa")
-    flag_modified(estado_partida, "jugadores")
-    await db.commit()
+    await crud_combates.guardar_estado_partida(db, estado_partida)
 
     # Avisamos al front
     await manager.broadcast({
@@ -203,6 +202,52 @@ async def pasar_fase_manual(
         "mensaje": "Fase completada", 
         "nueva_fase": nuevo_estado.fase_actual.value,
         "turno_de": nuevo_estado.user_turno_actual
+    }
+
+
+@router.post("/partidas/{partida_id}/colocar_tropas", status_code=status.HTTP_200_OK)
+async def colocar_tropas_reserva(
+    partida_id: int,
+    datos: ColocarTropasIn,
+    usuario_actual: User = Depends(obtener_usuario_actual),
+    db: AsyncSession = Depends(get_db)
+):
+    # 1. EL MOZO DE ALMACÉN SACA LOS INGREDIENTES
+    estado_partida = await obtener_estado_partida(db, partida_id)
+    jugador_id = usuario_actual.username
+    
+    t_destino = obtener_datos_territorio(estado_partida.mapa, datos.territorio_id)
+    datos_jugador_dict = estado_partida.jugadores.get(jugador_id, {})
+    jugador_estado = JugadorBase(**datos_jugador_dict)
+
+    # 2. EL CHEF REVISA Y COCINA
+    try:
+        validar_colocacion_tropas(
+            estado_partida, jugador_id, datos.territorio_id, 
+            t_destino, datos.tropas, jugador_estado.tropas_reserva
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+    resolver_colocacion_tropas(jugador_estado, t_destino, datos.tropas)
+
+    # 3. EL MOZO DE ALMACÉN GUARDA EL PLATO
+    estado_partida.mapa[datos.territorio_id] = t_destino.model_dump()
+    estado_partida.jugadores[jugador_id] = jugador_estado.model_dump()
+    await crud_combates.guardar_estado_partida(db, estado_partida)
+
+    # 4. EL JEFE DE SALA AVISA A TODOS
+    await manager.broadcast({
+        "tipo_evento": "TROPAS_COLOCADAS",
+        "jugador": jugador_id,
+        "territorio": datos.territorio_id,
+        "tropas_añadidas": datos.tropas,
+        "tropas_totales_ahora": t_destino.units
+    }, partida_id)
+
+    return {
+        "mensaje": f"Has metido {datos.tropas} soldados en {datos.territorio_id}",
+        "reserva_restante": jugador_estado.tropas_reserva
     }
 
 

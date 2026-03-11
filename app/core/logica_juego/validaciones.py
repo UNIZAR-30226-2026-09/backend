@@ -51,3 +51,20 @@ def validar_ataque_convencional(
     validar_tropas(tropas_a_mover, t_origen.units)
     
     return True
+
+def validar_colocacion_tropas(estado_partida, jugador_id: str, territorio_id: str, t_destino, tropas_a_poner: int, tropas_reserva: int):
+    # ¿Es su turno?
+    if estado_partida.user_turno_actual != jugador_id:
+        raise ValueError("Quieto ahí, que no es tu turno")
+        
+    # ¿Está en la fase correcta?
+    if estado_partida.fase_actual.value != "refuerzo":
+        raise ValueError("Ahora no toca poner tropas, estás en otra fase")
+
+    # ¿El territorio es suyo?
+    if t_destino.owner_id != jugador_id:
+        raise ValueError("No puedes poner tropas en un territorio enemigo")
+
+    # ¿Tiene pasta (tropas) suficiente?
+    if tropas_reserva < tropas_a_poner:
+        raise ValueError(f"No te flipes, solo tienes {tropas_reserva} tropas de reserva")
