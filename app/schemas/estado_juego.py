@@ -7,7 +7,7 @@ class TerritorioBase(BaseModel):
     units: int = Field(ge=0, description="Número de tropas. No puede ser negativo.")
 
 class JugadorBase(BaseModel):
-    tropas_pendientes_despliegue: int = Field(default=0, ge=0)
+    tropas_reserva: int = Field(default=0, ge=0)
     movimiento_conquista_pendiente: bool = Field(default=False)
     origen_conquista: Optional[str] = None
     destino_conquista: Optional[str] = None
