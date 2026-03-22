@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 import random
 import string
 import asyncio
 from datetime import datetime, timedelta, timezone
 
-from app.schemas.partida import PartidaCreate, PartidaRead, JugadorPartidaRead
+from app.schemas.partida import PartidaCreate, PartidaRead, JugadorPartidaRead, VotoPausa
+from app.schemas.partida import AccionPausaOut, EmpezarPartidaOut, VerEstadoPartidaOut
 from app.models.partida import EstadosPartida, ColorJugador, EstadoPartida, FasePartida
 from app.api.deps import obtener_usuario_actual
 from app.models.usuario import User
@@ -19,20 +20,30 @@ from app.core.logica_juego.maquina_estados import iniciar_temporizador, tareas_e
 
 router = APIRouter()
 
+#! Mover de aqui
 # Fabrica codigos de 6 letras/numeros al azar
 def generar_codigo_invitacion():
     caracteres = string.ascii_uppercase + string.digits
     return ''.join(random.choices(caracteres, k=6))
 
-# ----------------------------------------------------------------------------
-# 1. CREAR PARTIDA
-# ----------------------------------------------------------------------------
+# --- PARTIDAS ---
+
 @router.post("", response_model=PartidaRead)
 async def crear_partida(
     partida_in: PartidaCreate,
     usuario_actual: User = Depends(obtener_usuario_actual),
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Crea una nueva partida, genera un código único de invitación y añade al anfitrión como primer jugador.
+
+    - **partida_in**: Esquema de configuración de la partida (máximo de jugadores, visibilidad, temporizador).
+    - **usuario_actual**: Dependencia que valida el usuario actual autenticado (creador).
+    - **db**: Sesión de base de datos asíncrona.
+    
+    Retorna los datos de la partida creada.
+    """
+
     nuevo_codigo = generar_codigo_invitacion()
     
     nueva_partida = await crud_partidas.crear_partida_y_creador(
@@ -44,25 +55,38 @@ async def crear_partida(
     
     return nueva_partida
 
-# ----------------------------------------------------------------------------
-# 2. LISTAR PARTIDAS PÚBLICAS
-# ----------------------------------------------------------------------------
 @router.get("", response_model=list[PartidaRead])
 async def listar_partidas_publicas(
     usuario_actual: User = Depends(obtener_usuario_actual),
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Obtiene el listado de partidas públicas disponibles en el sistema.
+
+    - **usuario_actual**: Dependencia que valida el usuario actual autenticado.
+    - **db**: Sesión de base de datos asíncrona.
+    
+    Retorna una lista de partidas configuradas como públicas.
+    """
+    #! Validad usuario actual ¿?
     return await crud_partidas.obtener_partidas_publicas(db)
 
-# ----------------------------------------------------------------------------
-# 3. UNIRSE A UNA PARTIDA
-# ----------------------------------------------------------------------------
 @router.post("/{codigo}/unirse", response_model=JugadorPartidaRead)
 async def unirse_partida(
     codigo: str,
     usuario_actual: User = Depends(obtener_usuario_actual),
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Permite a un usuario unirse a una partida existente utilizando su código de invitación.
+
+    - **codigo**: Cadena alfanumérica única que identifica la sala.
+    - **usuario_actual**: Dependencia que valida el usuario actual autenticado.
+    - **db**: Sesión de base de datos asíncrona.
+    
+    Retorna la información del jugador tras unirse a la sala.
+    """
+
     partida = await crud_partidas.obtener_partida_por_codigo(db, codigo)
 
     if not partida:
@@ -94,15 +118,23 @@ async def unirse_partida(
 
     return nuevo_jugador
 
-# ----------------------------------------------------------------------------
-# 4. EMPEZAR LA PARTIDA (El pistoletazo de salida)
-# ----------------------------------------------------------------------------
-@router.post("/{partida_id}/empezar")
+@router.post("/{partida_id}/empezar", response_model=EmpezarPartidaOut, status_code=status.HTTP_200_OK)
 async def empezar_partida(
     partida_id: int,
     usuario_actual: User = Depends(obtener_usuario_actual),
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Inicia una partida en fase de creación. Genera el reparto inicial del mapa e inicia los temporizadores.
+    Solo puede ser ejecutado por el creador de la partida.
+
+    - **partida_id**: Identificador único de la partida.
+    - **usuario_actual**: Dependencia que valida el usuario actual autenticado.
+    - **db**: Sesión de base de datos asíncrona.
+    
+    Retorna un diccionario con el estado inicial de la partida (mensaje, id, turno inicial y fase).
+    """
+
     # Buscamos la partida
     partida = await crud_partidas.obtener_partida_por_id(db, partida_id)
 
@@ -160,14 +192,20 @@ async def empezar_partida(
         "fase": "refuerzo"
     }
 
-# ----------------------------------------------------------------------------
-# 5. VER ESTADO DE LA PARTIDA (La mirilla)
-# ----------------------------------------------------------------------------
-@router.get("/{partida_id}/estado")
+@router.get("/{partida_id}/estado", response_model=VerEstadoPartidaOut, status_code=status.HTTP_200_OK)
 async def ver_estado_partida(
     partida_id: int,
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Obtiene el estado actual del tablero, los jugadores y las fases de una partida activa.
+
+    - **partida_id**: Identificador único de la partida.
+    - **db**: Sesión de base de datos asíncrona.
+    
+    Retorna un objeto estructurado con el estado completo de la partida.
+    """
+    
     estado = await crud_partidas.obtener_estado_partida(db, partida_id)
 
     if not estado:
@@ -180,3 +218,52 @@ async def ver_estado_partida(
         "mapa": estado.mapa,
         "jugadores": estado.jugadores
     }
+
+@router.post("/{code}/reanudar", response_model=AccionPausaOut, status_code=status.HTTP_200_OK)
+async def reanudar_partida(
+    code: str,
+    usuario_actual: User = Depends(obtener_usuario_actual),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Inicia la recuperación de una partida pausada.
+
+    - **code**: Código único de 6 caracteres de la partida.
+    - **usuario_actual**: El usuario que reanuda la partida (host)
+    - **db**: Sesión de base de datos asíncrona.
+    """
+    raise HTTPException(status_code=501, detail="No implementado")
+
+@router.post("/{code}/pausa/solicitar", response_model=AccionPausaOut, status_code=status.HTTP_200_OK)
+async def solicitar_pausa(
+    code: str,
+    usuario_actual: User = Depends(obtener_usuario_actual),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Cualquier jugador puede llamar a esto para abrir una votación de pausa.
+    
+    - **code**: Código único de 6 caracteres de la partida.
+    - **usuario_actual**: El jugador que propone pausar el juego.
+    - **db**: Sesión de base de datos asíncrona.
+    """
+    raise HTTPException(status_code=501, detail="No implementado")
+
+
+@router.post("/{code}/pausa/votar", response_model=AccionPausaOut, status_code=status.HTTP_200_OK)
+async def votar_pausa(
+    code: str,
+    voto_in: VotoPausa,
+    usuario_actual: User = Depends(obtener_usuario_actual),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Los jugadores usan este endpoint para votar si quieren pausar o no.
+    Si los votos a favor alcanzan la mayoría, el estado pasará a PAUSED.
+
+    - **code**: Código único de 6 caracteres de la partida.
+    - **voto_in**: Booleano indicando si vota que SÍ (true) o que NO (false).
+    - **usuario_actual**: El jugador que emite el voto.
+    - **db**: Sesión de base de datos asíncrona.
+    """
+    raise HTTPException(status_code=501, detail="No implementado")

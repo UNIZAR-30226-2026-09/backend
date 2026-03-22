@@ -18,3 +18,16 @@ class AtaqueCreate(BaseModel):
 
 class MovimientoConquistaCreate(BaseModel):
     tropas_a_mover: int = Field(ge=0, description="Número de tropas adicionales a mover")
+
+
+class MoverConquistaOut(BaseModel):
+    mensaje: str
+
+class PasarFaseOut(BaseModel):
+    mensaje: str
+    nueva_fase: str
+    turno_de: str
+
+class ColocarTropasOut(BaseModel):
+    mensaje: str
+    reserva_restante: int

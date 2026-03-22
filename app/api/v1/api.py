@@ -12,7 +12,7 @@ api_router.include_router(mapa.router, prefix="/mapa", tags=["Mapa"])
 api_router.include_router(partidas.router, prefix="/partidas", tags=["Partidas"])
 api_router.include_router(amigos.router, prefix="/amigos", tags=["Amigos"])
 
-api_router.include_router(combates.router, tags=["combates"])
+api_router.include_router(combates.router, tags=["Combates"])
 
 api_router.include_router(websockets.router, tags=["WebSockets"])
 

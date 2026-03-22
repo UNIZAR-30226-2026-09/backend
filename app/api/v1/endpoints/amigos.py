@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.schemas.usuario import AmistadCreate, AmistadRead
+from app.schemas.usuario import UserRead, AmistadCreate, AmistadRead, AmistadUpdate
 from app.models.usuario import User
 from app.api.deps import obtener_usuario_actual
 from app.db.session import get_db
@@ -9,15 +9,38 @@ from app.crud import crud_amigos
 
 router = APIRouter()
 
-# ----------------------------------------------------------------------------
-# 1. SOLICITAR AMISTAD
-# ----------------------------------------------------------------------------
+# --- AMISTADES ---
+@router.get("", response_model=list[AmistadRead])
+async def listar_amigos(
+    usuario_actual: User = Depends(obtener_usuario_actual),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Lista todos los amigos aceptados del usuario autenticado.
+
+    - **usuario_actual**: Dependencia que valida el usuario actual autenticado mediante JWT.
+    - **db**: Sesión de base de datos asíncrona.
+    
+    Retorna una lista de objetos de usuario correspondientes a los amigos confirmados.
+    """
+    return await crud_amigos.obtener_lista_amigos(db, usuario_actual.username)
+
+
 @router.post("/solicitar", response_model=AmistadRead)
-async def solicitar_amistad(
+async def enviar_solicitud_amistad(
     amistad_in: AmistadCreate,
     usuario_actual: User = Depends(obtener_usuario_actual),
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Envía una solicitud de amistad a otro jugador.
+
+    - **amistad_in**: Esquema con los datos del destinatario de la solicitud.
+    - **usuario_actual**: Dependencia que valida el usuario actual autenticado.
+    - **db**: Sesión de base de datos asíncrona.
+    
+    Retorna el estado de la solicitud de amistad recién creada.
+    """
     # Evitar que uno se añada a sí mismo
     if usuario_actual.username == amistad_in.user_2:
         raise HTTPException(status_code=400, detail="No puedes enviarte una solicitud a ti mismo")
@@ -26,7 +49,6 @@ async def solicitar_amistad(
     if not await crud_amigos.verificar_usuario_existe(db, amistad_in.user_2):
         raise HTTPException(status_code=404, detail="El usuario al que intentas agregar no existe")
 
-    # Comprobar si ya existe relación
     relacion_existente = await crud_amigos.obtener_relacion_existente(
         db, 
         usuario_actual.username, 
@@ -35,7 +57,6 @@ async def solicitar_amistad(
     if relacion_existente:
         raise HTTPException(status_code=400, detail="Ya existe una relación o solicitud pendiente con este usuario")
 
-    # Todo limpio, creamos solicitud
     nueva_amistad = await crud_amigos.crear_solicitud(
         db,
         usuario_actual.username,
@@ -44,48 +65,76 @@ async def solicitar_amistad(
 
     return nueva_amistad
 
-# ----------------------------------------------------------------------------
-# 2. VER MIS SOLICITUDES PENDIENTES
-# ----------------------------------------------------------------------------
 @router.get("/solicitudes", response_model=list[AmistadRead])
-async def ver_solicitudes(
+async def listar_solicitudes_pendientes(
     usuario_actual: User = Depends(obtener_usuario_actual),
     db: AsyncSession = Depends(get_db)
 ):
-    # Buscamos las que me han mandado a mí (yo soy el user_2) y están pendientes
+    """
+    Lista las solicitudes de amistad pendientes (tanto enviadas como recibidas).
+
+    - **usuario_actual**: Dependencia que valida el usuario actual autenticado.
+    - **db**: Sesión de base de datos asíncrona.
+    
+    Retorna una lista de los objetos de estado de solicitud de amistad.
+    """
     return await crud_amigos.obtener_solicitudes_pendientes(db, usuario_actual.username)
 
-# ----------------------------------------------------------------------------
-# 3. ACEPTAR AMISTAD
-# ----------------------------------------------------------------------------
-@router.put("/{username_solicitante}/aceptar", response_model=AmistadRead)
-async def aceptar_amistad(
-    username_solicitante: str,
+
+@router.put("/solicitudes/{solicitud_id}", response_model=AmistadRead, status_code=status.HTTP_200_OK)
+async def procesar_solicitud_amistad(
+    solicitud_id: int,
+    estado_in: AmistadUpdate,
     usuario_actual: User = Depends(obtener_usuario_actual),
     db: AsyncSession = Depends(get_db)
 ):
-    # Buscamos la solicitud específica
-    amistad = await crud_amigos.obtener_solicitud_especifica(
-        db,
-        username_solicitante,
-        usuario_actual.username
-    )
+    """
+    Acepta o rechaza una solicitud de amistad recibida.
 
-    if not amistad:
-        raise HTTPException(status_code=404, detail="No hay ninguna solicitud pendiente de este usuario")
+    - **solicitud_id**: Identificador único de la solicitud a procesar.
+    - **estado_in**: Esquema que contiene el nuevo estado a aplicar (ACEPTADA o RECHAZADA).
+    - **usuario_actual**: Dependencia que valida el usuario actual autenticado.
+    - **db**: Sesión de base de datos asíncrona.
+    
+    Retorna el objeto de amistad actualizado con el nuevo estado.
+    """
+    raise HTTPException(status_code=501, detail="No implementado")
 
-    # Aceptamos la solicitud
-    amistad_aceptada = await crud_amigos.aceptar_solicitud(db, amistad)
+# @router.put("/{username_solicitante}/aceptar", response_model=AmistadRead)
+# async def aceptar_amistad(
+#     username_solicitante: str,
+#     usuario_actual: User = Depends(obtener_usuario_actual),
+#     db: AsyncSession = Depends(get_db)
+# ):
+#     # Buscamos la solicitud específica
+#     amistad = await crud_amigos.obtener_solicitud_especifica(
+#         db,
+#         username_solicitante,
+#         usuario_actual.username
+#     )
 
-    return amistad_aceptada
+#     if not amistad:
+#         raise HTTPException(status_code=404, detail="No hay ninguna solicitud pendiente de este usuario")
 
-# ----------------------------------------------------------------------------
-# 4. VER MI LISTA DE AMIGOS
-# ----------------------------------------------------------------------------
-@router.get("", response_model=list[AmistadRead])
-async def listar_amigos(
+#     # Aceptamos la solicitud
+#     amistad_aceptada = await crud_amigos.aceptar_solicitud(db, amistad)
+
+#     return amistad_aceptada
+
+
+@router.delete("/{amigo_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def eliminar_amigo(
+    amigo_id: int,
     usuario_actual: User = Depends(obtener_usuario_actual),
     db: AsyncSession = Depends(get_db)
 ):
-    # Buscamos donde salga yo (ya sea como user_1 o user_2) y el estado sea aceptada
-    return await crud_amigos.obtener_lista_amigos(db, usuario_actual.username)
+    """
+    Elimina a un usuario de la lista de amigos.
+
+    - **amigo_id**: Identificador único del amigo que será eliminado de la lista.
+    - **usuario_actual**: Dependencia que valida el usuario actual autenticado.
+    - **db**: Sesión de base de datos asíncrona.
+    
+    Retorna un código de estado 204 indicando que la eliminación fue exitosa (sin contenido).
+    """
+    raise HTTPException(status_code=501, detail="No implementado")

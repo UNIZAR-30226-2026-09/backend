@@ -10,7 +10,7 @@ from app.api.deps import obtener_usuario_actual
 from app.models.usuario import User
 from app.db.session import get_db
 from app.core.ws_manager import manager
-from app.schemas.combate import AtaqueCreate, ResultadoCombate
+from app.schemas.combate import AtaqueCreate, ResultadoCombate, MoverConquistaOut, PasarFaseOut, ColocarTropasOut
 from app.schemas.estado_juego import TerritorioBase, JugadorBase
 from app.crud import crud_combates
 from app.core.logica_juego.validaciones import validar_colocacion_tropas
@@ -18,6 +18,7 @@ from app.core.logica_juego.combate import resolver_colocacion_tropas
 
 router = APIRouter()
 
+#! Mover de aqui
 # --- MODELOS DE DATOS ---
 class MoverConquistaIn(BaseModel):
     tropas: int
@@ -26,6 +27,7 @@ class ColocarTropasIn(BaseModel):
     territorio_id: str
     tropas: int
 
+#! Ayuda en api¿?
 # --- FUNCIONES DE AYUDA ---
 async def obtener_estado_partida(db: AsyncSession, partida_id: int):
     """Función adaptadora que llama al CRUD y lanza HTTPException si no existe."""
@@ -79,16 +81,26 @@ def verificar_movimiento_pendiente(jugadores: dict, jugador_id: str):
     return jugador_estado
 
 
-# ----------------------------------------------------------------------------
-# RUTA 1: ATACAR
-# ----------------------------------------------------------------------------
-@router.post("/partidas/{partida_id}/ataque", status_code=status.HTTP_200_OK)
+# --- MECÁNICAS DE JUEGO ---
+
+@router.post("/partidas/{partida_id}/ataque", response_model=ResultadoCombate, status_code=status.HTTP_200_OK)
 async def ejecutar_ataque(
     partida_id: int,
     ataque_in: AtaqueCreate,
     usuario_actual: User = Depends(obtener_usuario_actual),
     db: AsyncSession = Depends(get_db)
 ):
+    """
+    Evalúa y ejecuta un ataque entre territorios, calculando las tiradas de dados y las bajas.
+
+    - **partida_id**: Identificador único de la partida.
+    - **ataque_in**: Esquema con los datos del ataque (origen, destino, tropas).
+    - **usuario_actual**: Dependencia que valida el usuario actual autenticado.
+    - **db**: Sesión de base de datos asíncrona.
+    
+    Retorna el resultado matemático y lógico del combate.
+    """
+
     estado_partida = await obtener_estado_partida(db, partida_id)
     atacante_id = usuario_actual.username
 
@@ -125,16 +137,25 @@ async def ejecutar_ataque(
     return resultado
 
 
-# ----------------------------------------------------------------------------
-# RUTA 2: MOVER TROPAS TRAS CONQUISTAR
-# ----------------------------------------------------------------------------
-@router.post("/partidas/{partida_id}/mover_conquista", status_code=status.HTTP_200_OK)
+@router.post("/partidas/{partida_id}/mover_conquista", response_model=MoverConquistaOut, status_code=status.HTTP_200_OK)
 async def mover_tropas_conquista(
     partida_id: int,
     datos: MoverConquistaIn,
     usuario_actual: User = Depends(obtener_usuario_actual),
     db: AsyncSession = Depends(get_db)
 ):
+    
+    """
+    Ejecuta el movimiento obligatorio de tropas hacia un territorio recientemente conquistado.
+
+    - **partida_id**: Identificador único de la partida.
+    - **datos**: Esquema con el número de tropas a movilizar.
+    - **usuario_actual**: Dependencia que valida el usuario actual autenticado.
+    - **db**: Sesión de base de datos asíncrona.
+    
+    Retorna un mensaje de confirmación de la operación.
+    """
+    
     estado_partida = await obtener_estado_partida(db, partida_id)
     jugador_id = usuario_actual.username
     
@@ -180,15 +201,23 @@ async def mover_tropas_conquista(
     return {"mensaje": f"Has movilizado {datos.tropas} tropas a tu nuevo territorio"}
 
 
-# ----------------------------------------------------------------------------
-# RUTA 3: PASAR DE FASE A MANO
-# ----------------------------------------------------------------------------
-@router.post("/partidas/{partida_id}/pasar_fase", status_code=status.HTTP_200_OK)
+@router.post("/partidas/{partida_id}/pasar_fase", response_model=PasarFaseOut, status_code=status.HTTP_200_OK)
 async def pasar_fase_manual(
     partida_id: int,
     usuario_actual: User = Depends(obtener_usuario_actual),
     db: AsyncSession = Depends(get_db)
 ):
+    
+    """
+    Avanza manualmente la fase actual del turno del jugador (ej. de Refuerzo a Combate).
+
+    - **partida_id**: Identificador único de la partida.
+    - **usuario_actual**: Dependencia que valida el usuario actual autenticado.
+    - **db**: Sesión de base de datos asíncrona.
+    
+    Retorna la información actualizada de la nueva fase y a quién corresponde el turno.
+    """
+
     estado_partida = await obtener_estado_partida(db, partida_id)
     
     if estado_partida.user_turno_actual != usuario_actual.username:
@@ -205,14 +234,24 @@ async def pasar_fase_manual(
     }
 
 
-@router.post("/partidas/{partida_id}/colocar_tropas", status_code=status.HTTP_200_OK)
+@router.post("/partidas/{partida_id}/colocar_tropas", response_model=ColocarTropasOut, status_code=status.HTTP_200_OK)
 async def colocar_tropas_reserva(
     partida_id: int,
     datos: ColocarTropasIn,
     usuario_actual: User = Depends(obtener_usuario_actual),
     db: AsyncSession = Depends(get_db)
 ):
-    # 1. EL MOZO DE ALMACÉN SACA LOS INGREDIENTES
+    """
+    Permite al jugador en turno desplegar tropas de su reserva en un territorio controlado.
+
+    - **partida_id**: Identificador único de la partida.
+    - **datos**: Esquema con el territorio de destino y la cantidad de tropas.
+    - **usuario_actual**: Dependencia que valida el usuario actual autenticado.
+    - **db**: Sesión de base de datos asíncrona.
+    
+    Retorna un estado indicando el éxito del despliegue y la reserva restante.
+    """
+
     estado_partida = await obtener_estado_partida(db, partida_id)
     jugador_id = usuario_actual.username
     
@@ -220,7 +259,6 @@ async def colocar_tropas_reserva(
     datos_jugador_dict = estado_partida.jugadores.get(jugador_id, {})
     jugador_estado = JugadorBase(**datos_jugador_dict)
 
-    # 2. EL CHEF REVISA Y COCINA
     try:
         validar_colocacion_tropas(
             estado_partida, jugador_id, datos.territorio_id, 
@@ -231,12 +269,10 @@ async def colocar_tropas_reserva(
 
     resolver_colocacion_tropas(jugador_estado, t_destino, datos.tropas)
 
-    # 3. EL MOZO DE ALMACÉN GUARDA EL PLATO
     estado_partida.mapa[datos.territorio_id] = t_destino.model_dump()
     estado_partida.jugadores[jugador_id] = jugador_estado.model_dump()
     await crud_combates.guardar_estado_partida(db, estado_partida)
 
-    # 4. EL JEFE DE SALA AVISA A TODOS
     await manager.broadcast({
         "tipo_evento": "TROPAS_COLOCADAS",
         "jugador": jugador_id,
@@ -251,10 +287,10 @@ async def colocar_tropas_reserva(
     }
 
 
-# ----------------------------------------------------------------------------
-# RUTA DE TEST PARA COMPROBAR LOS DADOS (T9)
-# ----------------------------------------------------------------------------
-@router.get("/test-dados", response_model=ResultadoCombate)
-async def probar_dados_de_guerra(tropas_atacantes: int = 3, tropas_defensoras: int = 2):
-    resultado = resolver_tirada(tropas_atacantes, tropas_defensoras)
-    return resultado
+# # ----------------------------------------------------------------------------
+# # RUTA DE TEST PARA COMPROBAR LOS DADOS (T9)
+# # ----------------------------------------------------------------------------
+# @router.get("/test-dados", response_model=ResultadoCombate)
+# async def probar_dados_de_guerra(tropas_atacantes: int = 3, tropas_defensoras: int = 2):
+#     resultado = resolver_tirada(tropas_atacantes, tropas_defensoras)
+#     return resultado

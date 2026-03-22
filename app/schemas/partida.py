@@ -58,3 +58,24 @@ class EstadoPartidaRead(BaseModel):
 
     class Config:
         from_attributes = True
+
+class VotoPausa(BaseModel):
+    voto_a_favor: bool
+
+
+class EmpezarPartidaOut(BaseModel):
+    mensaje: str
+    partida_id: int
+    turno_de: str
+    fase: str
+
+class VerEstadoPartidaOut(BaseModel):
+    turno_de: str
+    fase_actual: str
+    fin_fase_utc: datetime
+    mapa: Dict[str, Any]
+    jugadores: Dict[str, Any]
+
+class AccionPausaOut(BaseModel):
+    mensaje: str
+    estado_actual: str

@@ -28,7 +28,7 @@ class UserUpdate(BaseModel):
  
 class EstadisticaRead(BaseModel):
     # Solo lectura, esto se actualiza internamente en el backend tras cada partida
-    nombre_user: str
+    username: str
     num_partidas_jugadas: int
     num_partidas_ganadas: int
     num_continentes_conquistados: int
@@ -51,6 +51,9 @@ class AmistadRead(BaseModel):
 
     class Config:
         from_attributes = True
+
+class AmistadUpdate(BaseModel):
+    estado: EstadoAmistad
 
 # TOKENS VIP (JWT)
 
