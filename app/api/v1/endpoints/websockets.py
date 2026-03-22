@@ -29,7 +29,7 @@ async def websocket_endpoint(websocket: WebSocket, id_partida: str, username: st
 
         # Avisamos al resto de la sala de que este jugador se ha caído
         await manager.broadcast({
-            "evento": "desconexion",
+            "tipo_evento": "desconexion",
             "jugador": username,
             "mensaje": f"{username} ha abandonado la partida."
         }, id_partida)

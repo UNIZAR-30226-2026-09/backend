@@ -29,7 +29,7 @@ async def probar_logica():
     print(f"\nEstado interno (Diccionario): {manager.active_connections}")
 
     print("\n=== PROBANDO EL BROADCAST (Mensaje a toda la partida) ===")
-    await manager.broadcast({"evento": "chat", "texto": "¡Hola Aragón!"}, id_partida=12)
+    await manager.broadcast({"tipo_evento": "chat", "texto": "¡Hola Aragón!"}, id_partida=12)
 
     print("\n=== PROBANDO DESCONEXIÓN ===")
     manager.disconnect(id_partida=12, username="Pepe")

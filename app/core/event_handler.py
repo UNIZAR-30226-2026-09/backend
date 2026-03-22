@@ -39,7 +39,7 @@ async def handle_chat(id_partida: int, username: str, data: dict):
     print(f"[CHAT] {username} dice: {data.get('mensaje')}")
     # El chat es lo único que sí podemos dejar funcionando como "eco"
     await manager.broadcast({
-        "evento": "chat",
+        "tipo_evento": "chat",
         "emisor": username,
         "mensaje": data.get("mensaje", "")
     }, id_partida)
