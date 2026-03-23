@@ -226,8 +226,8 @@ async def test_evento_ataque_resultado_broadcast(monkeypatch):
     payload, partida_id = broadcast_payloads[0]
     assert partida_id == 1
     assert _assert_tipo_evento(payload, "ATAQUE_RESULTADO")
-    assert payload["origen_id"] == "Huesca"
-    assert payload["destino_id"] == "Barbastro"
+    assert payload["origen"] == "Huesca"
+    assert payload["destino"] == "Barbastro"
 
 
 @pytest.mark.asyncio

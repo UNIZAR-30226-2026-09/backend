@@ -204,8 +204,8 @@ async def test_http_ataque_emite_ws(monkeypatch):
     payload, pid = broadcast_payloads[0]
     assert pid == 1
     assert _assert_tipo_evento(payload, "ATAQUE_RESULTADO")
-    assert payload["origen_id"] == "A"
-    assert payload["destino_id"] == "B"
+    assert payload["origen"] == "A"
+    assert payload["destino"] == "B"
 
 
 @pytest.mark.asyncio
