@@ -35,8 +35,8 @@ class GameNotifier:
     async def enviar_resultado_ataque(partida_id: int, origen_id: str, destino_id: str, resultado):
         await manager.broadcast({
             "tipo_evento": "ATAQUE_RESULTADO",
-            "origen_id": origen_id,
-            "destino_id": destino_id,
+            "origen": origen_id,
+            "destino": destino_id,
             "dados_atacante": resultado.dados_atacante,
             "dados_defensor": resultado.dados_defensor,
             "bajas_atacante": resultado.bajas_atacante,

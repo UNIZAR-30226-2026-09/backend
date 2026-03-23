@@ -173,7 +173,12 @@ async def empezar_partida(
     mapa_repartido = generar_reparto_inicial(jugadores_ids, comarcas_ids)
     
     # Les damos 10 tropas a cada uno de regalo para colocar en el primer turno
-    estado_jugadores = {j_id: {"tropas_reserva": 10} for j_id in jugadores_ids}
+    estado_jugadores = {
+        j.usuario_id: {
+            "tropas_reserva": 10,
+            "color": j.color.value
+        } for j in jugadores 
+    }
 
     # Creamos el tablero real (T8)
     fin_fase = datetime.now(timezone.utc) + timedelta(seconds=partida.config_timer_seconds)

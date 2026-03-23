@@ -38,8 +38,8 @@ Para establecer la conexión, el cliente debe abrir un socket hacia la siguiente
     ```json
     {
         "tipo_evento": "ATAQUE_RESULTADO",
-        "origen_id": "Huesca",
-        "destino_id": "Barbastro",
+        "origen": "Huesca",
+        "destino": "Barbastro",
         "dados_atacante": [6, 4, 2],
         "dados_defensor": [5, 1],
         "bajas_atacante": 0,
@@ -90,8 +90,46 @@ Para establecer la conexión, el cliente debe abrir un socket hacia la siguiente
         "fin_fase_utc": "2026-03-22T15:30:00Z"
     }
     ```
+### 3.2. Inicio de Partida
+* **Dirección:** Servidor -> Todos los Clientes (Broadcast)
+* **Descripción:** Se emite a todos los jugadores en el lobby cuando el host inicia la partida mediante el endpoint HTTP `/empezar`. Indica al Frontend que debe cambiar de la pantalla de espera al tablero.
+* **Payload recibido:**
+    ```json
+    {
+        "tipo_evento": "PARTIDA_INICIADA",
+        "mapa": { "Huesca": { "owner_id": "jugador_1", "units": 0 }, ... },
+        "jugadores": { 
+                "jugador_1": { 
+                    "tropas_reserva": 10,
+                    "color": "ROJO" 
+                },
+                "jugador_2": { 
+                    "tropas_reserva": 10,
+                    "color": "AZUL" 
+                }
+    },
+            "turno_de": "jugador_1",
+        "fase_actual": "refuerzo",
+        "fin_fase_utc": "2026-03-22T15:30:00Z"
+    }
+    ```
 
-### 3.2. Notificación de Desconexión
+### 3.3. Sincronización de Reconexión
+* **Dirección:** Servidor -> Cliente (Unicast)
+* **Descripción:** Se transmite exclusivamente al cliente que acaba de abrir el WebSocket **si la partida ya había empezado**. Permite al Frontend en una reconexión.
+* **Payload recibido:**
+    ```json
+    {
+        "tipo_evento": "ACTUALIZACION_MAPA",
+        "mapa": { "Huesca": { "owner_id": "jugador_1", "units": 5 }, ... },
+        "jugadores": { "jugador_1": { "tropas_reserva": 0 }, ... },
+        "turno_de": "jugador_2",
+        "fase_actual": "ataque",
+        "fin_fase_utc": "2026-03-22T15:35:00Z"
+    }
+    ```
+
+### 3.4. Notificación de Desconexión
 * **Dirección:** Servidor -> Todos los Clientes (Broadcast)
 * **Descripción:** Alerta emitida automáticamente por el gestor de conexiones cuando se interrumpe el socket de un participante.
 * **Payload recibido:**
@@ -103,7 +141,19 @@ Para establecer la conexión, el cliente debe abrir un socket hacia la siguiente
     }
     ```
 
-### 3.3. Excepciones y Errores (WS Directo)
+### 3.5. Notificación de Nuevo Jugador
+* **Dirección:** Servidor -> Todos los Clientes (Broadcast)
+* **Descripción:** Se emite cuando un nuevo usuario se une a la sala (vía HTTP). Permite a los que ya están en el lobby actualizar su lista de amigos.
+* **Payload recibido:**
+    ```json
+    {
+        "tipo_evento": "NUEVO_JUGADOR",
+        "jugador": "nombre",
+        "color": "color"
+    }
+    ```
+
+### 3.6. Excepciones y Errores (WS Directo)
 * **Dirección:** Servidor -> Cliente (Unicast)
 * **Descripción:** Se transmite exclusivamente al cliente emisor si envía un mensaje WS malformado.
 * **Payload recibido:**
@@ -113,3 +163,6 @@ Para establecer la conexión, el cliente debe abrir un socket hacia la siguiente
         "error": "Formato incorrecto. Falta el campo 'accion'."
     }
     ```
+
+## 4. EVENTOS PENDIENTES DE DOCUMENTAR
+Hay eventos pendientes de documentar en limpio!
