@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 
@@ -24,8 +24,7 @@ class PartidaRead(BaseModel):
     estado: EstadosPartida
     ganador: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
  
 # JUGADORES EN LA SALA
@@ -37,8 +36,8 @@ class JugadorPartidaRead(BaseModel):
     estado_jugador: EstadoJugador
     color: ColorJugador
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
 
  
 # ESTADO DEL TABLERO (El núcleo del juego)
@@ -56,8 +55,8 @@ class EstadoPartidaRead(BaseModel):
     mapa: dict
     jugadores: dict
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
 
 class VotoPausa(BaseModel):
     voto_a_favor: bool

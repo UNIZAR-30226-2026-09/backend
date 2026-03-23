@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from typing import Optional
 from app.models.usuario import EstadoAmistad # Pillamos el enum directamente del modelo
 
@@ -15,8 +15,8 @@ class UserCreate(UserBase):
 
 class UserRead(UserBase):
     # Lo que devolvemos al frontend (sin la contraseña)
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
 
 class UserUpdate(BaseModel):
     # Todo opcional por si el calvo solo quiere cambiar el email
@@ -34,8 +34,8 @@ class EstadisticaRead(BaseModel):
     num_continentes_conquistados: int
     num_soldados_matados: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
 
  
 # AMISTADES
@@ -49,8 +49,8 @@ class AmistadRead(BaseModel):
     user_2: str
     estado: EstadoAmistad
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
 
 class AmistadUpdate(BaseModel):
     estado: EstadoAmistad
