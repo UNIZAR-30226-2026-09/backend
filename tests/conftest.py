@@ -52,3 +52,9 @@ async def setup_db():
 def client():
     with TestClient(app) as c:
         yield c
+
+# 5. Proveedor de la sesión de BD
+@pytest.fixture
+async def db():
+    async with TestingSessionLocal() as session:
+        yield session
