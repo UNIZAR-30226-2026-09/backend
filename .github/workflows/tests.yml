@@ -1,0 +1,30 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clonando repo
+        uses: actions/checkout@v4
+
+      - name: Preparando python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Iniciando uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          uv-version: "latest"
+
+      - name: Instalando dependecias
+        run: uv sync
+
+      - name: Ejecutando tests
+        run: uv run pytest
