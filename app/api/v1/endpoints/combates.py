@@ -15,6 +15,8 @@ from app.schemas.estado_juego import TerritorioBase, JugadorBase
 from app.crud import crud_combates
 from app.core.logica_juego.validaciones import validar_colocacion_tropas
 from app.core.logica_juego.combate import resolver_colocacion_tropas
+from app.core.notifier import notifier
+
 
 router = APIRouter()
 
@@ -55,19 +57,6 @@ def gestionar_victoria(
         jugador_estado.movimiento_conquista_pendiente = True
         jugador_estado.origen_conquista = origen_id
         jugador_estado.destino_conquista = destino_id
-
-async def notificar_resultado(partida_id: int, origen_id: str, destino_id: str, resultado):
-    evento_ws = {
-        "tipo_evento": "ATAQUE_RESULTADO",
-        "origen_id": origen_id,
-        "destino_id": destino_id,
-        "dados_atacante": resultado.dados_atacante,
-        "dados_defensor": resultado.dados_defensor,
-        "bajas_atacante": resultado.bajas_atacante,
-        "bajas_defensor": resultado.bajas_defensor,
-        "victoria": resultado.victoria_atacante
-    }
-    await manager.broadcast(evento_ws, partida_id)
 
 def verificar_movimiento_pendiente(jugadores: dict, jugador_id: str):
     datos_jugador_dict = jugadores.get(jugador_id, {})
@@ -132,8 +121,12 @@ async def ejecutar_ataque(
 
     await crud_combates.guardar_estado_partida(db, estado_partida)
 
-    await notificar_resultado(partida_id, ataque_in.territorio_origen_id, ataque_in.territorio_destino_id, resultado)
-
+    await notifier.enviar_resultado_ataque(
+        partida_id, 
+        ataque_in.territorio_origen_id, 
+        ataque_in.territorio_destino_id, 
+        resultado
+    )
     return resultado
 
 
@@ -190,13 +183,9 @@ async def mover_tropas_conquista(
     await crud_combates.guardar_estado_partida(db, estado_partida)
 
     # Avisamos al front
-    await manager.broadcast({
-        "tipo_evento": "MOVIMIENTO_CONQUISTA",
-        "origen": origen_id,
-        "destino": destino_id,
-        "tropas": datos.tropas,
-        "jugador": jugador_id
-    }, partida_id)
+    await notifier.enviar_movimiento_conquista(
+        partida_id, origen_id, destino_id, datos.tropas, jugador_id
+    )
 
     return {"mensaje": f"Has movilizado {datos.tropas} tropas a tu nuevo territorio"}
 
@@ -273,13 +262,9 @@ async def colocar_tropas_reserva(
     estado_partida.jugadores[jugador_id] = jugador_estado.model_dump()
     await crud_combates.guardar_estado_partida(db, estado_partida)
 
-    await manager.broadcast({
-        "tipo_evento": "TROPAS_COLOCADAS",
-        "jugador": jugador_id,
-        "territorio": datos.territorio_id,
-        "tropas_añadidas": datos.tropas,
-        "tropas_totales_ahora": t_destino.units
-    }, partida_id)
+    await notifier.enviar_tropas_colocadas(
+        partida_id, jugador_id, datos.territorio_id, datos.tropas, t_destino.units
+    )
 
     return {
         "mensaje": f"Has metido {datos.tropas} soldados en {datos.territorio_id}",

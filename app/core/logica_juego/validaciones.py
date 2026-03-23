@@ -3,9 +3,6 @@ from enum import Enum
 from app.schemas.estado_juego import TerritorioBase
 from app.models.partida import FasePartida
 
-def son_adyacentes_mock(grafo_aragon, origen_id: str, destino_id: str) -> bool:
-    return True
-
 def validar_turno(jugador_actual: str, jugador_id: str):
     if jugador_actual != jugador_id:
         raise ValueError("No es tu turno.")
@@ -43,7 +40,7 @@ def validar_ataque_convencional(
     validar_turno(estado_partida.user_turno_actual, jugador_id)
     validar_fase(estado_partida.fase_actual, FasePartida.ATAQUE_CONVENCIONAL)
     
-    if not son_adyacentes_mock(grafo_aragon, origen_id, destino_id):
+    if not grafo_aragon.son_vecinas(origen_id, destino_id):
         raise ValueError("Los territorios no están conectados.")
     
     validar_propiedad_territorio(t_origen, jugador_id)

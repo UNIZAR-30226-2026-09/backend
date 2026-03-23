@@ -8,10 +8,10 @@ def validar_tropas(tropas_atacantes: int, tropas_defensoras: int):
     if tropas_atacantes > 3:
         raise ValueError("El atacante no puede usar más de 3 tropas.")
 
-
+#!
 def calcular_dados(tropas_atacantes: int, tropas_defensoras: int):
     num_dados_atacante = tropas_atacantes
-    num_dados_defensor = min(tropas_defensoras, 2)
+    num_dados_defensor = min(tropas_defensoras, 2) 
     return num_dados_atacante, num_dados_defensor
 
 

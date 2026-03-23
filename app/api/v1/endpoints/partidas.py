@@ -18,6 +18,10 @@ from app.core.map_state import game_map_state
 from app.core.logica_juego.inicializacion import generar_reparto_inicial
 from app.core.logica_juego.maquina_estados import iniciar_temporizador, tareas_en_segundo_plano
 
+from app.core.ws_manager import manager
+from app.core.notifier import notifier
+
+
 router = APIRouter()
 
 #! Mover de aqui
@@ -116,6 +120,12 @@ async def unirse_partida(
         colores_libres[0]
     )
 
+    await notifier.notificar_nuevo_jugador(
+        partida_id=partida.id,
+        username=usuario_actual.username,
+        color=nuevo_jugador.color.value
+    )
+
     return nuevo_jugador
 
 @router.post("/{partida_id}/empezar", response_model=EmpezarPartidaOut, status_code=status.HTTP_200_OK)
@@ -184,6 +194,14 @@ async def empezar_partida(
     tarea_inicio = asyncio.create_task(iniciar_temporizador(partida.id, FasePartida.REFUERZO, fin_fase))
     tareas_en_segundo_plano.add(tarea_inicio)
     tarea_inicio.add_done_callback(tareas_en_segundo_plano.discard)
+
+    await notifier.enviar_inicio_partida(
+        partida_id=partida.id,
+        mapa=mapa_repartido,
+        jugadores=estado_jugadores,
+        turno_de=jugador_creador.usuario_id,
+        fin_fase=fin_fase
+    )
 
     return {
         "mensaje": "¡Aragón está en guerra!", 
