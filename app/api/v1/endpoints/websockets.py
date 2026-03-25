@@ -9,7 +9,7 @@ from app.crud.crud_partidas import obtener_estado_partida
 router = APIRouter()
 
 @router.websocket("/ws/{id_partida}/{username}")
-async def websocket_endpoint(websocket: WebSocket, id_partida: str, username: str):
+async def websocket_endpoint(websocket: WebSocket, id_partida: int, username: str):
 
     # Aceptamos la conexión WebSocket
     await manager.connect(websocket, id_partida, username)

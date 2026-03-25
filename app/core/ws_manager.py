@@ -1,5 +1,5 @@
 from fastapi import WebSocket
-from typing import Dict, Any
+from typing import Dict, Optional
 import json
 
 class ConnectionManager:
@@ -10,7 +10,23 @@ class ConnectionManager:
         # Formato: { id_partida: { username: WebSocket_Object } }
         self.active_connections: Dict[int, Dict[str, WebSocket]] = {}
 
+
+    @staticmethod
+    def _normalizar_id_partida(id_partida, contexto: str) -> Optional[int]:
+        """Convierte id_partida a int y registra errores de formato."""
+        try:
+            return int(id_partida)
+        except (TypeError, ValueError):
+            print(f"[WS] id_partida inválido al {contexto}: {id_partida}")
+            return None
+
     async def connect(self, websocket: WebSocket, id_partida: int, username: str):
+
+        id_partida_normalizado = self._normalizar_id_partida(id_partida, "conectar")
+        if id_partida_normalizado is None:
+            await websocket.close(code=1008)
+            return
+        id_partida = id_partida_normalizado
 
         # Aceptar la conexión WebSocket y agregar el jugador a la partida correspondiente7
         await websocket.accept()
@@ -25,6 +41,11 @@ class ConnectionManager:
 
     def disconnect(self, id_partida: int, username: str):
 
+        id_partida_normalizado = self._normalizar_id_partida(id_partida, "desconectar")
+        if id_partida_normalizado is None:
+            return
+        id_partida = id_partida_normalizado
+
         # Elimina al jugador de la partida correspondiente
         if id_partida in self.active_connections:
             if username in self.active_connections[id_partida]:
@@ -37,6 +58,11 @@ class ConnectionManager:
 
     async def send_personal_message(self, message: str, id_partida: int, username: str):
 
+        id_partida_normalizado = self._normalizar_id_partida(id_partida, "enviar mensaje personal")
+        if id_partida_normalizado is None:
+            return
+        id_partida = id_partida_normalizado
+
         # Enviar un mensaje a un jugador específico en una partida
         if id_partida in self.active_connections:
             if username in self.active_connections[id_partida]:
@@ -44,7 +70,12 @@ class ConnectionManager:
                 await websocket.send_json(message)
 
     async def broadcast(self, message: dict, id_partida: int):
-        
+
+        id_partida_normalizado = self._normalizar_id_partida(id_partida, "hacer broadcast")
+        if id_partida_normalizado is None:
+            return
+        id_partida = id_partida_normalizado
+
         # Enviar un mensaje a todos los jugadores de una partida
         if id_partida in self.active_connections:
             for websocket in self.active_connections[id_partida].values():
