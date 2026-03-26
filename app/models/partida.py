@@ -109,7 +109,7 @@ class EstadoPartida(Base):
 
     __tablename__ = "estado_partida"
 
-    partida_id: Mapped[str] = mapped_column(ForeignKey("partidas.id", ondelete="CASCADE"), primary_key=True)
+    partida_id: Mapped[int] = mapped_column(ForeignKey("partidas.id", ondelete="CASCADE"), primary_key=True)
     
     fase_actual: Mapped[FasePartida] = mapped_column(
         Enum(FasePartida, name="fase_partida_enum", create_constraint=True),
