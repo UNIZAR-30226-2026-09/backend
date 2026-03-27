@@ -16,7 +16,7 @@ def crear_estado_comarca(owner_id: str) -> dict:
     # Usamos el schema del JSONB mapa 
     territorio = TerritorioBase(
         owner_id=owner_id, 
-        units=1
+        units=random.randint(3, 5)
     )
     
     return territorio.model_dump()

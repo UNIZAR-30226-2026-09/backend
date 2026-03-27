@@ -12,6 +12,11 @@ from app.core.ws_manager import manager
 # Guarda las tareas para que Python no las borre por error
 tareas_en_segundo_plano = set()
 
+# Un timer por partida — evita que se acumulen timers en paralelo para la misma partida.
+# El bug que teníamos: cada llamada a avanzar_fase lanzaba un timer nuevo sin cancelar
+# el anterior, así que con 3 timers activos las fases duraban ~2s en vez de 60.
+timers_por_partida: dict[int, asyncio.Task] = {}
+
 TRANSICIONES = {
     FasePartida.REFUERZO: FasePartida.ATAQUE_CONVENCIONAL,
     FasePartida.ATAQUE_CONVENCIONAL: FasePartida.FORTIFICACION,
@@ -27,7 +32,7 @@ async def avanzar_fase(
     """Avanza la partida a la siguiente fase y notifica a los jugadores."""
     query = (
         select(EstadoPartida)
-        .options(selectinload(EstadoPartida.partida)) # Permite acceder al timer
+        .options(selectinload(EstadoPartida.partida))
         .where(EstadoPartida.partida_id == partida_id)
     )
     resultado = await db.execute(query)
@@ -55,11 +60,20 @@ async def avanzar_fase(
         "fin_fase_utc": estado.fin_fase_actual.isoformat()
     }, partida_id)
 
-    # Lanzamos temporizador y lo guardamos a salvo
-    tarea_timer = asyncio.create_task(iniciar_temporizador(partida_id, nueva_fase, estado.fin_fase_actual))
+    # Cancelamos el timer anterior de esta partida antes de lanzar uno nuevo.
+    # Sin esto cada pasar_fase manual + el timer automático acumulan tareas
+    # en paralelo y las fases se ciclan exponencialmente más rápido.
+    timer_anterior = timers_por_partida.get(partida_id)
+    if timer_anterior and not timer_anterior.done():
+        timer_anterior.cancel()
+
+    tarea_timer = asyncio.create_task(
+        iniciar_temporizador(partida_id, nueva_fase, estado.fin_fase_actual)
+    )
+    timers_por_partida[partida_id] = tarea_timer
     tareas_en_segundo_plano.add(tarea_timer)
     tarea_timer.add_done_callback(tareas_en_segundo_plano.discard)
-    
+
     return estado
 
 
@@ -68,13 +82,11 @@ async def iniciar_temporizador(partida_id: int, fase_vigente: FasePartida, tiemp
     Espera en background hasta el tiempo límite y fuerza el cambio de fase
     si el jugador activo no lo hizo manualmente.
     """
-    # Calculamos segundos restantes
     ahora = datetime.now(timezone.utc)
     segundos_espera = (tiempo_limite - ahora).total_seconds()
     if segundos_espera > 0:
         await asyncio.sleep(segundos_espera)
 
-    # Abrimos sesión independiente y forzamos avance de fase
     try:
         async with AsyncSessionLocal() as db_session:
             await avanzar_fase(
@@ -82,8 +94,10 @@ async def iniciar_temporizador(partida_id: int, fase_vigente: FasePartida, tiemp
                 db=db_session,
                 fase_actual_solicitada=fase_vigente
             )
+    except asyncio.CancelledError:
+        # El timer fue cancelado por avanzar_fase — comportamiento normal, no es un error
+        pass
     except Exception as e:
-        # Log de errores de background
         print(f"[ERROR Timer Partida {partida_id}] Fallo al transicionar fase: {e}")
 
 

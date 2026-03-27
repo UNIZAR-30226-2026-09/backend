@@ -16,7 +16,7 @@ from app.crud import crud_partidas
 # Cosas nuevas para empezar la partida
 from app.core.map_state import game_map_state
 from app.core.logica_juego.inicializacion import generar_reparto_inicial
-from app.core.logica_juego.maquina_estados import iniciar_temporizador, tareas_en_segundo_plano
+from app.core.logica_juego.maquina_estados import iniciar_temporizador, tareas_en_segundo_plano, timers_por_partida
 
 from app.core.ws_manager import manager
 from app.core.notifier import notifier
