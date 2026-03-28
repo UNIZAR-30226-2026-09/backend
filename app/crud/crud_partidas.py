@@ -239,4 +239,4 @@ async def obtener_partida_activa_del_jugador(
         )
     )
     resultado = await db.execute(query)
-    return resultado.scalar_one_or_none()
+    return resultado.scalars().first()

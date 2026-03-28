@@ -34,7 +34,6 @@ def validar_ataque_convencional(
     t_origen: TerritorioBase,
     destino_id: str,
     t_destino: TerritorioBase,
-    tropas_a_mover: int,
     jugador_id: str,
     grafo_aragon
 ):
@@ -46,7 +45,9 @@ def validar_ataque_convencional(
     
     validar_propiedad_territorio(t_origen, jugador_id, "origen")
     validar_ataque_no_propio(t_origen, t_destino)
-    validar_tropas(tropas_a_mover, t_origen.units)
+
+    if t_origen.units < 2:
+        raise ValueError("Necesitas al menos 2 tropas en el origen para poder atacar.")
     
     return True
 

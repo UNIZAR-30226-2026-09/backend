@@ -2,13 +2,14 @@ import pytest
 from app.core.logica_juego.combate import calcular_dados, comparar_dados, validar_tropas
 
 def test_calculo_cantidad_dados():
-    # Regla: Si ataco con 3 y defienden 5, yo tiro 3 dados y él tira 2.
-    dados_a, dados_d = calcular_dados(tropas_atacantes=3, tropas_defensoras=5)
-    assert dados_a == 3
-    assert dados_d == 2
+    # Sin límite de dados: atacante usa tropas-1, defensor usa todas sus tropas.
+    dados_a, dados_d = calcular_dados(tropas_atacantes=10, tropas_defensoras=5)
+    assert dados_a == 9
+    assert dados_d == 5
 
-    # Regla: Si defienden con 1, solo tira 1 dado.
-    dados_a2, dados_d2 = calcular_dados(tropas_atacantes=3, tropas_defensoras=1)
+    # Con 1 tropa defensora, el defensor tira 1 dado.
+    dados_a2, dados_d2 = calcular_dados(tropas_atacantes=4, tropas_defensoras=1)
+    assert dados_a2 == 3
     assert dados_d2 == 1
 
 def test_comparacion_dados_victoria_atacante():

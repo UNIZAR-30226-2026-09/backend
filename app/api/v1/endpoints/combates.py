@@ -1,78 +1,26 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel
-
 from app.core.map_state import map_calculator
 from app.core.logica_juego.validaciones import validar_ataque_convencional
-from app.core.logica_juego.combate import resolver_tirada
+from app.core.logica_juego.combate import resolver_ataque_completo
 from app.core.logica_juego.maquina_estados import avanzar_fase
 from app.api.deps import obtener_usuario_actual
 from app.models.usuario import User
 from app.db.session import get_db
-from app.core.ws_manager import manager
-from app.schemas.combate import AtaqueCreate, ResultadoCombate, MoverConquistaOut, PasarFaseOut, ColocarTropasOut
+from app.schemas.combate import AtaqueCreate, ResultadoAtaqueCompleto, MoverConquistaIn, MoverConquistaOut, ColocarTropasIn, PasarFaseOut, ColocarTropasOut
 from app.schemas.estado_juego import TerritorioBase, JugadorBase
 from app.crud import crud_combates
+from app.crud.crud_partidas import obtener_estado_partida
+
 from app.core.logica_juego.validaciones import validar_colocacion_tropas
-from app.core.logica_juego.combate import resolver_colocacion_tropas
+from app.core.logica_juego.combate import resolver_colocacion_tropas, aplicar_resultado_combate, ejecutar_conquista
+from app.core.logica_juego.utils import obtener_datos_territorio, verificar_movimiento_pendiente
 from app.core.notifier import notifier
 
 
 router = APIRouter()
 
-#! Mover de aqui
-# --- MODELOS DE DATOS ---
-class MoverConquistaIn(BaseModel):
-    tropas: int
-
-class ColocarTropasIn(BaseModel):
-    territorio_id: str
-    tropas: int
-
-#! Ayuda en api¿?
-# --- FUNCIONES DE AYUDA ---
-async def obtener_estado_partida(db: AsyncSession, partida_id: int):
-    """Función adaptadora que llama al CRUD y lanza HTTPException si no existe."""
-    estado = await crud_combates.obtener_estado_partida(db, partida_id)
-    if not estado:
-        raise HTTPException(404, "Estado de partida no encontrado")
-    return estado
-
-def obtener_datos_territorio(mapa: dict, territorio_id: str) -> TerritorioBase:
-    if territorio_id not in mapa:
-        raise HTTPException(status_code=404, detail="Territorio no encontrado en el mapa")
-    return TerritorioBase(**mapa[territorio_id])
-
-def aplicar_bajas(t_origen: TerritorioBase, t_destino: TerritorioBase, resultado):
-    t_origen.units -= resultado.bajas_atacante
-    t_destino.units -= resultado.bajas_defensor
-
-def gestionar_victoria(
-        t_destino: TerritorioBase, jugador_estado: JugadorBase, 
-        atacante_id: str, origen_id: str, destino_id: str, resultado):
-    
-    if resultado.victoria_atacante:
-        t_destino.owner_id = atacante_id
-        # Activamos el flag para que el jugador esté obligado a mover tropas
-        jugador_estado.movimiento_conquista_pendiente = True
-        jugador_estado.origen_conquista = origen_id
-        jugador_estado.destino_conquista = destino_id
-
-def verificar_movimiento_pendiente(jugadores: dict, jugador_id: str):
-    datos_jugador_dict = jugadores.get(jugador_id, {})
-    jugador_estado = JugadorBase(**datos_jugador_dict)
-    
-    if jugador_estado.movimiento_conquista_pendiente:
-         raise HTTPException(
-             status_code=status.HTTP_400_BAD_REQUEST, 
-             detail="Debes mover tropas al territorio conquistado antes de realizar otro ataque."
-         )
-    return jugador_estado
-
-
-# --- MECÁNICAS DE JUEGO ---
-
-@router.post("/partidas/{partida_id}/ataque", response_model=ResultadoCombate, status_code=status.HTTP_200_OK)
+@router.post("/partidas/{partida_id}/ataque", response_model=ResultadoAtaqueCompleto, status_code=status.HTTP_200_OK)
 async def ejecutar_ataque(
     partida_id: int,
     ataque_in: AtaqueCreate,
@@ -102,18 +50,19 @@ async def ejecutar_ataque(
         validar_ataque_convencional(
             estado_partida, ataque_in.territorio_origen_id, t_origen,
             ataque_in.territorio_destino_id, t_destino,
-            ataque_in.tropas_a_mover, atacante_id, map_calculator
+            atacante_id, map_calculator
         )
     except ValueError as e:
         raise HTTPException(400, str(e))
 
-    resultado = resolver_tirada(ataque_in.tropas_a_mover, t_destino.units)
-    aplicar_bajas(t_origen, t_destino, resultado)
+    resultado = resolver_ataque_completo(t_origen.units, t_destino.units)
 
-    gestionar_victoria(
-        t_destino, jugador_estado, atacante_id, 
-        ataque_in.territorio_origen_id, ataque_in.territorio_destino_id, resultado
-    )
+    aplicar_resultado_combate(t_origen, t_destino, resultado)
+
+    if resultado.victoria_atacante:
+        ejecutar_conquista(t_destino, jugador_estado, atacante_id, 
+                          ataque_in.territorio_origen_id, 
+                          ataque_in.territorio_destino_id)
 
     estado_partida.mapa[ataque_in.territorio_origen_id] = t_origen.model_dump()
     estado_partida.mapa[ataque_in.territorio_destino_id] = t_destino.model_dump()
@@ -270,12 +219,3 @@ async def colocar_tropas_reserva(
         "mensaje": f"Has metido {datos.tropas} soldados en {datos.territorio_id}",
         "reserva_restante": jugador_estado.tropas_reserva
     }
-
-
-# # ----------------------------------------------------------------------------
-# # RUTA DE TEST PARA COMPROBAR LOS DADOS (T9)
-# # ----------------------------------------------------------------------------
-# @router.get("/test-dados", response_model=ResultadoCombate)
-# async def probar_dados_de_guerra(tropas_atacantes: int = 3, tropas_defensoras: int = 2):
-#     resultado = resolver_tirada(tropas_atacantes, tropas_defensoras)
-#     return resultado

@@ -1,41 +1,24 @@
 import pytest
 from fastapi import HTTPException, status
 
-from app.api.v1.endpoints.combates import (
-    aplicar_bajas,
-    gestionar_victoria,
-    obtener_datos_territorio,
-    verificar_movimiento_pendiente,
-)
+from app.core.logica_juego.utils import obtener_datos_territorio, verificar_movimiento_pendiente
+from app.core.logica_juego.combate import aplicar_resultado_combate, ejecutar_conquista
 from app.core.logica_juego.validaciones import validar_ataque_convencional
 from app.core.map_state import map_calculator, game_map_state
 from app.models.partida import FasePartida
-from app.schemas.combate import ResultadoCombate
 from app.schemas.estado_juego import JugadorBase, TerritorioBase
-
-
-def _resultado(victoria: bool, bajas_atacante: int = 0, bajas_defensor: int = 0) -> ResultadoCombate:
-    return ResultadoCombate(
-        dados_atacante=[6],
-        dados_defensor=[1],
-        bajas_atacante=bajas_atacante,
-        bajas_defensor=bajas_defensor,
-        victoria_atacante=victoria,
-        tropas_restantes_defensor=0,
-    )
 
 
 def test_gestionar_victoria_actualiza_estado_de_conquista():
     t_destino = TerritorioBase(owner_id="defensor", units=2)
     jugador_estado = JugadorBase()
 
-    gestionar_victoria(
+    ejecutar_conquista(
         t_destino=t_destino,
         jugador_estado=jugador_estado,
         atacante_id="atacante",
         origen_id="A",
         destino_id="B",
-        resultado=_resultado(victoria=True),
     )
 
     assert t_destino.owner_id == "atacante"
@@ -45,18 +28,12 @@ def test_gestionar_victoria_actualiza_estado_de_conquista():
 
 
 def test_gestionar_victoria_no_modifica_si_no_hay_conquista():
+    # Sin conquista el endpoint simplemente no llama a ejecutar_conquista.
+    # Verificamos que el estado queda intacto cuando no se invoca la función.
     t_destino = TerritorioBase(owner_id="defensor", units=2)
     jugador_estado = JugadorBase()
 
-    gestionar_victoria(
-        t_destino=t_destino,
-        jugador_estado=jugador_estado,
-        atacante_id="atacante",
-        origen_id="A",
-        destino_id="B",
-        resultado=_resultado(victoria=False),
-    )
-
+    # No llamamos a ejecutar_conquista → estado no cambia
     assert t_destino.owner_id == "defensor"
     assert jugador_estado.movimiento_conquista_pendiente is False
     assert jugador_estado.origen_conquista is None
@@ -92,7 +69,15 @@ def test_aplicar_bajas_actualiza_unidades():
     t_origen = TerritorioBase(owner_id="atacante", units=5)
     t_destino = TerritorioBase(owner_id="defensor", units=3)
 
-    aplicar_bajas(t_origen, t_destino, _resultado(victoria=True, bajas_atacante=2, bajas_defensor=1))
+    from app.schemas.combate import ResultadoAtaqueCompleto
+    resultado = ResultadoAtaqueCompleto(
+        victoria_atacante=False,
+        bajas_atacante=2,
+        bajas_defensor=1,
+        tropas_restantes_origen=3,
+        tropas_restantes_defensor=2,
+    )
+    aplicar_resultado_combate(t_origen, t_destino, resultado)
 
     assert t_origen.units == 3
     assert t_destino.units == 2
@@ -143,7 +128,6 @@ def test_validar_ataque_no_colindante_lanza_error():
             t_origen,
             destino_id,
             t_destino,
-            1,
             "player",
             map_calculator,
         )

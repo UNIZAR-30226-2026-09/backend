@@ -36,11 +36,11 @@ class GameNotifier:
             "tipo_evento": "ATAQUE_RESULTADO",
             "origen": origen_id,
             "destino": destino_id,
-            "dados_atacante": resultado.dados_atacante,
-            "dados_defensor": resultado.dados_defensor,
             "bajas_atacante": resultado.bajas_atacante,
             "bajas_defensor": resultado.bajas_defensor,
-            "victoria": resultado.victoria_atacante
+            "victoria": resultado.victoria_atacante,
+            "tropas_restantes_origen": resultado.tropas_restantes_origen,
+            "tropas_restantes_defensor": resultado.tropas_restantes_defensor,
         }, partida_id)
 
     @staticmethod

@@ -1,5 +1,5 @@
 import random
-from app.schemas.combate import ResultadoCombate
+from app.schemas.combate import ResultadoAtaqueCompleto
 
 
 def validar_tropas(tropas_atacantes: int, tropas_defensoras: int):
@@ -8,10 +8,10 @@ def validar_tropas(tropas_atacantes: int, tropas_defensoras: int):
     if tropas_atacantes > 3:
         raise ValueError("El atacante no puede usar más de 3 tropas.")
 
-#!
 def calcular_dados(tropas_atacantes: int, tropas_defensoras: int):
-    num_dados_atacante = tropas_atacantes
-    num_dados_defensor = min(tropas_defensoras, 2) 
+    num_dados_atacante = tropas_atacantes - 1
+    num_dados_defensor = tropas_defensoras
+
     return num_dados_atacante, num_dados_defensor
 
 
@@ -39,27 +39,6 @@ def calcular_estado_final(tropas_defensoras, bajas_defensor):
     return tropas_restantes, victoria
 
 
-def resolver_tirada(tropas_atacantes_enviadas: int, tropas_defensoras_totales: int) -> ResultadoCombate:
-    validar_tropas(tropas_atacantes_enviadas, tropas_defensoras_totales)
-
-    num_a, num_d = calcular_dados(tropas_atacantes_enviadas, tropas_defensoras_totales)
-
-    dados_atacante = tirar_dados(num_a)
-    dados_defensor = tirar_dados(num_d)
-
-    bajas_a, bajas_d = comparar_dados(dados_atacante, dados_defensor)
-
-    tropas_restantes, victoria = calcular_estado_final(tropas_defensoras_totales, bajas_d)
-
-    return ResultadoCombate(
-        dados_atacante=dados_atacante,
-        dados_defensor=dados_defensor,
-        bajas_atacante=bajas_a,
-        bajas_defensor=bajas_d,
-        victoria_atacante=victoria,
-        tropas_restantes_defensor=tropas_restantes
-    )
-
 def resolver_colocacion_tropas(jugador_estado, t_destino, tropas_a_poner: int):
     jugador_estado.tropas_reserva -= tropas_a_poner
     t_destino.units += tropas_a_poner
@@ -67,3 +46,40 @@ def resolver_colocacion_tropas(jugador_estado, t_destino, tropas_a_poner: int):
 def resolver_fortificacion(estado_mapa: dict, origen_id: str, destino_id: str, tropas: int):
     estado_mapa[origen_id]["units"] -= tropas
     estado_mapa[destino_id]["units"] += tropas
+
+def resolver_ataque_completo(tropas_origen: int, tropas_destino: int) -> ResultadoAtaqueCompleto:
+    """Bucle completo hasta conquista o hasta quedarse con 1 tropa en origen."""
+    total_bajas_atacante = 0
+    total_bajas_defensor = 0
+
+    while tropas_origen > 1 and tropas_destino > 0:
+
+        dados_ataq_count, dados_def_count = calcular_dados(tropas_origen, tropas_destino)
+
+        dados_ataq = tirar_dados(dados_ataq_count)
+        dados_def = tirar_dados(dados_def_count)
+
+        bajas_a, bajas_d = comparar_dados(dados_ataq, dados_def)
+
+        tropas_origen -= bajas_a
+        tropas_destino -= bajas_d
+        total_bajas_atacante += bajas_a
+        total_bajas_defensor += bajas_d
+
+    return ResultadoAtaqueCompleto(
+        victoria_atacante=tropas_destino <= 0,
+        bajas_atacante=total_bajas_atacante,
+        bajas_defensor=total_bajas_defensor,
+        tropas_restantes_origen=tropas_origen,
+        tropas_restantes_defensor=tropas_destino,
+    )
+
+def aplicar_resultado_combate(t_origen, t_destino, resultado: ResultadoAtaqueCompleto):
+    t_origen.units = resultado.tropas_restantes_origen
+    t_destino.units = resultado.tropas_restantes_defensor
+
+def ejecutar_conquista(t_destino, jugador_estado, atacante_id: str, origen_id: str, destino_id: str):
+    t_destino.owner_id = atacante_id
+    jugador_estado.movimiento_conquista_pendiente = True
+    jugador_estado.origen_conquista = origen_id
+    jugador_estado.destino_conquista = destino_id

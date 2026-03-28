@@ -349,7 +349,7 @@ async def fortificar_tropas(
     """
     Fase final del turno: Permite redistribuir tropas aliadas entre dos territorios adyacentes.
     """
-    estado = await crud_combates.obtener_estado_partida(db, partida_id)
+    estado = await crud_partidas.obtener_estado_partida(db, partida_id)
     if not estado:
         raise HTTPException(status_code=404, detail="Estado de partida no encontrado")
 

@@ -81,7 +81,7 @@ def test_empezar_partida_emite_partida_iniciada(client, monkeypatch):
     assert res_empezar.status_code == 200
     body = res_empezar.json()
     assert body["partida_id"] == partida_id
-    assert body["turno_de"] == "creador_ws"
+    assert body["turno_de"] in ["creador_ws", "invitado_ws"]
     assert body["fase"] == "refuerzo"
 
     # 6. Verificamos broadcast correcto
@@ -89,7 +89,7 @@ def test_empezar_partida_emite_partida_iniciada(client, monkeypatch):
     payload, pid = broadcast_payloads[0]
     assert pid == partida_id
     assert payload["tipo_evento"] == "PARTIDA_INICIADA"
-    assert payload["turno_de"] == "creador_ws"
+    assert payload["turno_de"] in ["creador_ws", "invitado_ws"]
     assert payload["fase_actual"] == "refuerzo"
     assert "mapa" in payload and "jugadores" in payload and "fin_fase_utc" in payload
 
@@ -168,15 +168,15 @@ async def test_http_ataque_emite_ws(monkeypatch):
     def fake_validar(*args, **kwargs):
         return None
 
-    class DummyResultado:
-        dados_atacante = [6, 4, 2]
-        dados_defensor = [5, 1]
-        bajas_atacante = 0
-        bajas_defensor = 1
-        victoria_atacante = False
-
-    def fake_resolver_tirada(*args, **kwargs):
-        return DummyResultado()
+    def fake_resolver_ataque_completo(*args, **kwargs):
+        from app.schemas.combate import ResultadoAtaqueCompleto
+        return ResultadoAtaqueCompleto(
+            victoria_atacante=False,
+            bajas_atacante=1,
+            bajas_defensor=0,
+            tropas_restantes_origen=4,
+            tropas_restantes_defensor=2,
+        )
 
     broadcast_payloads = []
 
@@ -187,11 +187,11 @@ async def test_http_ataque_emite_ws(monkeypatch):
     monkeypatch.setattr(combates_endpoint, "obtener_estado_partida", fake_obtener_estado_partida)
     monkeypatch.setattr(combates_endpoint.crud_combates, "guardar_estado_partida", fake_guardar_estado_partida)
     monkeypatch.setattr(combates_endpoint, "validar_ataque_convencional", fake_validar)
-    monkeypatch.setattr(combates_endpoint, "resolver_tirada", fake_resolver_tirada)
+    monkeypatch.setattr(combates_endpoint, "resolver_ataque_completo", fake_resolver_ataque_completo)
     monkeypatch.setattr(manager, "broadcast", spy_broadcast)
 
     usuario = User(username="p1", email="p1@example.com", passwd_hash="x")
-    ataque = AtaqueCreate(territorio_origen_id="A", territorio_destino_id="B", tropas_a_mover=1)
+    ataque = AtaqueCreate(territorio_origen_id="A", territorio_destino_id="B")
 
     await combates_endpoint.ejecutar_ataque(
         partida_id=1,

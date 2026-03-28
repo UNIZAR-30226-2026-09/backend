@@ -212,15 +212,17 @@ async def test_evento_ataque_resultado_broadcast(monkeypatch):
 
     monkeypatch.setattr(manager, "broadcast", spy_broadcast)
 
-    class DummyResultado:
-        dados_atacante = [6, 4, 2]
-        dados_defensor = [5, 1]
-        bajas_atacante = 0
-        bajas_defensor = 2
-        victoria_atacante = True
-
+    from app.schemas.combate import ResultadoAtaqueCompleto
     from app.core.notifier import notifier
-    await notifier.enviar_resultado_ataque(1, "Huesca", "Barbastro", DummyResultado())
+
+    dummy_resultado = ResultadoAtaqueCompleto(
+        bajas_atacante=0,
+        bajas_defensor=2,
+        victoria_atacante=True,
+        tropas_restantes_origen=5,
+        tropas_restantes_defensor=0,
+    )
+    await notifier.enviar_resultado_ataque(1, "Huesca", "Barbastro", dummy_resultado)
 
     assert broadcast_payloads
     payload, partida_id = broadcast_payloads[0]
