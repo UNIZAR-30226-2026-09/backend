@@ -3,12 +3,11 @@ from sqlalchemy import select, delete
 from typing import Optional
 
 from app.models.partida import (
-    Partida, 
-    JugadoresPartida, 
+    Partida,
+    JugadoresPartida,
     EstadoPartida,
-    EstadosPartida, 
+    EstadosPartida,
     TipoVisibilidad,
-    ColorJugador
 )
 from app.schemas.partida import PartidaCreate
 
@@ -47,12 +46,10 @@ async def crear_partida_y_creador(
     await db.commit()
     await db.refresh(nueva_partida)
     
-    # El creador entra como jugador 1 con color ROJO
     creador = JugadoresPartida(
         usuario_id=creador_username,
         partida_id=nueva_partida.id,
         turno=1,
-        color=ColorJugador.ROJO
     )
     db.add(creador)
     await db.commit()
@@ -140,30 +137,15 @@ async def obtener_jugadores_partida(db: AsyncSession, partida_id: int) -> list[J
 # 6. UNIR JUGADOR A PARTIDA
 # ----------------------------------------------------------------------------
 async def unir_jugador(
-    db: AsyncSession, 
-    username: str, 
-    partida_id: int, 
-    turno: int, 
-    color: ColorJugador
+    db: AsyncSession,
+    username: str,
+    partida_id: int,
+    turno: int,
 ) -> JugadoresPartida:
-    """
-    Crea y guarda un nuevo JugadoresPartida.
-    
-    Args:
-        db: Sesión de base de datos
-        username: Username del jugador
-        partida_id: ID de la partida
-        turno: Número de turno del jugador
-        color: Color asignado al jugador
-        
-    Returns:
-        Objeto JugadoresPartida creado y refrescado
-    """
     nuevo_jugador = JugadoresPartida(
         usuario_id=username,
         partida_id=partida_id,
         turno=turno,
-        color=color
     )
 
     db.add(nuevo_jugador)

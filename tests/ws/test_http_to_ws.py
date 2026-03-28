@@ -147,7 +147,7 @@ def test_unirse_partida_emite_nuevo_jugador(client, monkeypatch):
     assert pid == partida_id
     assert payload["tipo_evento"] == "NUEVO_JUGADOR"
     assert payload["jugador"] == "invitado_nuevo"
-    assert "color" in payload
+    assert payload["jugador"] == "invitado_nuevo"
 
 
 @pytest.mark.asyncio

@@ -14,7 +14,7 @@ from app.schemas.estado_juego import TerritorioBase
 from app.schemas.partida import PartidaCreate, PartidaRead, VotoPausa
 from app.schemas.partida import AccionPausaOut, EmpezarPartidaOut, VerEstadoPartidaOut, UnirseOut, AbandonarOut
 from app.schemas.partida import FortificarIn
-from app.models.partida import EstadosPartida, ColorJugador, EstadoPartida, FasePartida
+from app.models.partida import EstadosPartida, EstadoPartida, FasePartida
 from app.api.deps import obtener_usuario_actual
 from app.models.usuario import User
 from app.db.session import get_db
@@ -115,23 +115,16 @@ async def unirse_partida(
         if j.usuario_id == usuario_actual.username:
             raise HTTPException(status_code=400, detail="Ya estás dentro de esta partida")
 
-    colores_usados = {j.color for j in jugadores_actuales}
-    todos_colores = set(ColorJugador)
-    colores_libres = list(todos_colores - colores_usados)
-    
-    nuevo_jugador = await crud_partidas.unir_jugador(
+    await crud_partidas.unir_jugador(
         db,
         usuario_actual.username,
         partida.id,
         len(jugadores_actuales) + 1,
-        colores_libres[0]
     )
-
 
     await notifier.notificar_nuevo_jugador(
         partida_id=partida.id,
         username=usuario_actual.username,
-        color=nuevo_jugador.color.value
     )
 
     jugadores_actualizados = await crud_partidas.obtener_jugadores_partida(db, partida.id)
@@ -217,12 +210,14 @@ async def empezar_partida(
     # Repartimos Aragón
     mapa_repartido = generar_reparto_inicial(jugadores_ids, comarcas_ids)
     
-    # Les damos 10 tropas a cada uno de regalo para colocar en el primer turno
+    # Asignamos numero_jugador de forma aleatoria y damos 10 tropas de inicio
+    numeros = list(range(1, len(jugadores) + 1))
+    random.shuffle(numeros)
     estado_jugadores = {
         j.usuario_id: {
+            "numero_jugador": numeros[i],
             "tropas_reserva": 10,
-            "color": j.color.value
-        } for j in jugadores 
+        } for i, j in enumerate(jugadores)
     }
 
     # Creamos el tablero real (T8)

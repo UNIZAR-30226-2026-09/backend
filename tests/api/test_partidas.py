@@ -51,7 +51,7 @@ def test_flujo_completo_partida(client):
     usernames = [j["usuario_id"] for j in body["jugadores_en_sala"]]
     assert "invitado" in usernames
     assert "creador" in usernames
-    assert any(j["usuario_id"] == "invitado" and j["color"] for j in body["jugadores_en_sala"])
+    assert any(j["usuario_id"] == "invitado" for j in body["jugadores_en_sala"])
     
     # 6. EL INVITADO INTENTA UNIRSE OTRA VEZ (Debe fallar con 400)
     res_doble_union = client.post(

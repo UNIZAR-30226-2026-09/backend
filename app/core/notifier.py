@@ -23,11 +23,10 @@ class GameNotifier:
         await manager.broadcast(payload, partida_id)
 
     @staticmethod
-    async def notificar_nuevo_jugador(partida_id: int, username: str, color: str):
+    async def notificar_nuevo_jugador(partida_id: int, username: str):
         await manager.broadcast({
             "tipo_evento": "NUEVO_JUGADOR",
             "jugador": username,
-            "color": color
         }, partida_id)
 
 

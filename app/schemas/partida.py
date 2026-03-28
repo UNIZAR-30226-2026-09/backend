@@ -3,7 +3,7 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime
 
 # Nos traemos las opciones fijas (Enums) que hicieron los compis
-from app.models.partida import TipoVisibilidad, EstadosPartida, EstadoJugador, FasePartida, ColorJugador
+from app.models.partida import TipoVisibilidad, EstadosPartida, EstadoJugador, FasePartida
 
 
 class FortificarIn(BaseModel):
@@ -39,7 +39,6 @@ class JugadorPartidaRead(BaseModel):
     partida_id: int
     turno: int
     estado_jugador: EstadoJugador
-    color: ColorJugador
 
     model_config = ConfigDict(from_attributes=True)
 

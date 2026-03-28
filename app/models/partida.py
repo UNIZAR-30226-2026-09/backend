@@ -33,12 +33,6 @@ class FasePartida(str, enum.Enum):
     ATAQUE_ESPECIAL = "ataque_especial"
     FORTIFICACION = "fortificacion"
 
-class ColorJugador(str, enum.Enum):
-    ROJO = "rojo"
-    AZUL = "azul"
-    VERDE = "verde"
-    AMARILLO = "amarillo"
-
 # ----------------------------------------------------------------------------
 # PRINCIPALES
 # ----------------------------------------------------------------------------
@@ -93,14 +87,10 @@ class JugadoresPartida(Base):
     # Orden de juego de este jugador
     turno: Mapped[int] = mapped_column(Integer) 
 
-    estado_jugador: Mapped[EstadoJugador] = mapped_column(  
-        Enum(EstadoJugador, name="estado_jugador_enum", create_constraint=True), 
+    estado_jugador: Mapped[EstadoJugador] = mapped_column(
+        Enum(EstadoJugador, name="estado_jugador_enum", create_constraint=True),
         default=EstadoJugador.VIVO
     )
-    
-    color: Mapped[ColorJugador] = mapped_column(
-        Enum(ColorJugador, name="color_jugador_enum", create_constraint=True)
-    )    
 
     partida_asociada: Mapped["Partida"] = relationship(back_populates="jugadores_en_sala")
 
