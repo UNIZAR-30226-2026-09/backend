@@ -2,6 +2,7 @@
 from enum import Enum
 from app.schemas.estado_juego import TerritorioBase
 from app.models.partida import FasePartida
+from app.core.logica_juego.utils import obtener_territorios_jugador
 
 def validar_turno(jugador_actual: str, jugador_id: str):
     if jugador_actual != jugador_id:
@@ -71,11 +72,7 @@ def validar_camino_aliado(origen: str, destino: str, owner_id: str, estado_mapa:
     Decide qué territorios son del jugador y le pregunta al motor si hay camino.
     """
     # Obtener nodos
-    nodos_aliados = []
-    for comarca_id, datos in estado_mapa.items():
-        propietario = datos.get("owner_id") if isinstance(datos, dict) else datos.owner_id
-        if propietario == owner_id:
-            nodos_aliados.append(comarca_id)
+    nodos_aliados = obtener_territorios_jugador(estado_mapa, owner_id)
 
     # Preguntar al grafo            
     if not grafo_aragon.existe_camino_restringido(origen, destino, nodos_aliados):

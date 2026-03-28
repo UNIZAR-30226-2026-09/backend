@@ -22,7 +22,7 @@ from app.crud import crud_partidas, crud_combates
 
 # Cosas nuevas para empezar la partida
 from app.core.map_state import game_map_state
-from app.core.logica_juego.inicializacion import generar_reparto_inicial
+from app.core.logica_juego.inicializacion import generar_reparto_inicial, repartir_tropas_iniciales
 from app.core.logica_juego.maquina_estados import iniciar_temporizador, tareas_en_segundo_plano, timers_por_partida
 
 from app.core.ws_manager import manager
@@ -212,12 +212,13 @@ async def empezar_partida(
     
     mapa_repartido = generar_reparto_inicial(jugadores_ids, comarcas_ids)
     
+    repartir_tropas_iniciales(mapa_repartido, jugadores_ids)
+
     numeros = list(range(1, len(jugadores) + 1))
     random.shuffle(numeros)
     estado_jugadores = {
         j.usuario_id: {
-            "numero_jugador": numeros[i],
-            "tropas_reserva": 10,
+            "numero_jugador": numeros[i]
         } for i, j in enumerate(jugadores)
     }
 
