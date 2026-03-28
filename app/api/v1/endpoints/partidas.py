@@ -221,13 +221,19 @@ async def empezar_partida(
         } for i, j in enumerate(jugadores)
     }
 
+    jugador_turno_1 = None
+    for i, j in enumerate(jugadores):
+        j.turno = numeros[i]
+        if j.turno == 1:
+            jugador_turno_1 = j.usuario_id
+
     fin_fase = datetime.now(timezone.utc) + timedelta(seconds=partida.config_timer_seconds)
     
     nuevo_estado = EstadoPartida(
         partida_id=partida.id,
         fase_actual=FasePartida.REFUERZO,
         fin_fase_actual=fin_fase,
-        user_turno_actual=partida.creador,
+        user_turno_actual=jugador_turno_1,
         mapa=mapa_repartido,
         jugadores=estado_jugadores
     )
@@ -244,14 +250,14 @@ async def empezar_partida(
         partida_id=partida.id,
         mapa=mapa_repartido,
         jugadores=estado_jugadores,
-        turno_de=partida.creador,
+        turno_de=jugador_turno_1,
         fin_fase=fin_fase
     )
 
     return {
         "mensaje": "¡Aragón está en guerra!", 
         "partida_id": partida.id, 
-        "turno_de": partida.creador,
+        "turno_de": jugador_turno_1,
         "fase": "refuerzo"
     }
 

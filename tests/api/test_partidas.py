@@ -127,3 +127,56 @@ def test_puede_unirse_tras_abandonar_partida_anterior(client):
     # Ahora puede unirse a la segunda
     res2 = client.post(f"/api/v1/partidas/{partida2['codigo_invitacion']}/unirse", headers=headers_inv)
     assert res2.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Helpers para tests de inicio de partida
+# ---------------------------------------------------------------------------
+
+def _empezar_partida(client, partida_id: int, headers_creador: dict) -> dict:
+    res = client.post(f"/api/v1/partidas/{partida_id}/empezar", headers=headers_creador)
+    assert res.status_code == 200, res.json()
+    return res.json()
+
+
+def _ver_estado(client, partida_id: int) -> dict:
+    res = client.get(f"/api/v1/partidas/{partida_id}/estado")
+    assert res.status_code == 200
+    return res.json()
+
+
+# ---------------------------------------------------------------------------
+# Tests: numero_jugador y orden de turno aleatorio
+# ---------------------------------------------------------------------------
+
+def test_primer_turno_corresponde_a_jugador_con_numero_1(client):
+    headers_c = _registrar_y_login(client, "creador")
+    headers_j2 = _registrar_y_login(client, "jugador2")
+
+    partida = _crear_partida(client, headers_c)
+    client.post(f"/api/v1/partidas/{partida['codigo_invitacion']}/unirse", headers=headers_j2)
+
+    inicio = _empezar_partida(client, partida["id"], headers_c)
+    estado = _ver_estado(client, partida["id"])
+
+    turno_de = inicio["turno_de"]
+    jugadores = estado["jugadores"]
+
+    # El jugador con turno actual debe ser el que tiene numero_jugador == 1
+    assert jugadores[turno_de]["numero_jugador"] == 1
+
+
+def test_numeros_jugador_son_unicos_y_en_rango(client):
+    headers_c = _registrar_y_login(client, "creador")
+    headers_j2 = _registrar_y_login(client, "jugador2")
+    headers_j3 = _registrar_y_login(client, "jugador3")
+
+    partida = _crear_partida(client, headers_c)
+    client.post(f"/api/v1/partidas/{partida['codigo_invitacion']}/unirse", headers=headers_j2)
+    client.post(f"/api/v1/partidas/{partida['codigo_invitacion']}/unirse", headers=headers_j3)
+
+    _empezar_partida(client, partida["id"], headers_c)
+    estado = _ver_estado(client, partida["id"])
+
+    numeros = [v["numero_jugador"] for v in estado["jugadores"].values()]
+    assert sorted(numeros) == list(range(1, len(numeros) + 1))
