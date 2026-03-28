@@ -40,17 +40,17 @@ Para establecer la conexión, el cliente debe abrir un socket hacia la siguiente
         "tipo_evento": "ATAQUE_RESULTADO",
         "origen": "Huesca",
         "destino": "Barbastro",
-        "dados_atacante": [6, 4, 2],
-        "dados_defensor": [5, 1],
         "bajas_atacante": 0,
         "bajas_defensor": 2,
-        "victoria": true
+        "victoria": true,
+        "tropas_restantes_origen": 4,
+        "tropas_restantes_defensor": 0
     }
     ```
 
-### 2.2. Movimiento tras Conquista
+### 2.2. Movimiento de Tropas (Conquista o Fortificación)
 * **Dirección:** Servidor -> Todos los Clientes (Broadcast)
-* **Descripción:** Se emite cuando un jugador traslada tropas al territorio recién conquistado.
+* **Descripción:** Se emite cuando un jugador traslada tropas al territorio recién conquistado o cuando mueve tropas durante la fase de Fortificación.
 * **Payload recibido:**
     ```json
     {
@@ -98,17 +98,11 @@ Para establecer la conexión, el cliente debe abrir un socket hacia la siguiente
     {
         "tipo_evento": "PARTIDA_INICIADA",
         "mapa": { "Huesca": { "owner_id": "jugador_1", "units": 0 }, ... },
-        "jugadores": { 
-                "jugador_1": { 
-                    "tropas_reserva": 10,
-                    "color": "ROJO" 
-                },
-                "jugador_2": { 
-                    "tropas_reserva": 10,
-                    "color": "AZUL" 
-                }
-    },
-            "turno_de": "jugador_1",
+        "jugadores": {
+            "jugador_1": { "numero_jugador": 1 },
+            "jugador_2": { "numero_jugador": 2 }
+        },
+        "turno_de": "jugador_1",
         "fase_actual": "refuerzo",
         "fin_fase_utc": "2026-03-22T15:30:00Z"
     }
@@ -148,8 +142,7 @@ Para establecer la conexión, el cliente debe abrir un socket hacia la siguiente
     ```json
     {
         "tipo_evento": "NUEVO_JUGADOR",
-        "jugador": "nombre",
-        "color": "color"
+        "jugador": "nombre"
     }
     ```
 
