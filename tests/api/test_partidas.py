@@ -46,7 +46,12 @@ def test_flujo_completo_partida(client):
         headers=headers_invitado
     )
     assert res_unirse.status_code == 200, f"Error al unirse a la partida: {res_unirse.json()}"
-    assert res_unirse.json()["usuario_id"] == "invitado"
+    body = res_unirse.json()
+    assert body["mensaje"] == "Unido a la partida"
+    usernames = [j["usuario_id"] for j in body["jugadores_en_sala"]]
+    assert "invitado" in usernames
+    assert "creador" in usernames
+    assert any(j["usuario_id"] == "invitado" and j["color"] for j in body["jugadores_en_sala"])
     
     # 6. EL INVITADO INTENTA UNIRSE OTRA VEZ (Debe fallar con 400)
     res_doble_union = client.post(

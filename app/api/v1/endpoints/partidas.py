@@ -11,8 +11,8 @@ from app.core.logica_juego.validaciones import validar_fortificacion
 from app.core.logica_juego.combate import resolver_fortificacion
 from app.schemas.estado_juego import TerritorioBase
 
-from app.schemas.partida import PartidaCreate, PartidaRead, JugadorPartidaRead, VotoPausa
-from app.schemas.partida import AccionPausaOut, EmpezarPartidaOut, VerEstadoPartidaOut
+from app.schemas.partida import PartidaCreate, PartidaRead, VotoPausa
+from app.schemas.partida import AccionPausaOut, EmpezarPartidaOut, VerEstadoPartidaOut, UnirseOut
 from app.schemas.partida import FortificarIn
 from app.models.partida import EstadosPartida, ColorJugador, EstadoPartida, FasePartida
 from app.api.deps import obtener_usuario_actual
@@ -82,7 +82,7 @@ async def listar_partidas_publicas(
     #! Validad usuario actual ¿?
     return await crud_partidas.obtener_partidas_publicas(db)
 
-@router.post("/{codigo}/unirse", response_model=JugadorPartidaRead)
+@router.post("/{codigo}/unirse", response_model=UnirseOut)
 async def unirse_partida(
     codigo: str,
     usuario_actual: User = Depends(obtener_usuario_actual),
@@ -127,13 +127,19 @@ async def unirse_partida(
         colores_libres[0]
     )
 
+
     await notifier.notificar_nuevo_jugador(
         partida_id=partida.id,
         username=usuario_actual.username,
         color=nuevo_jugador.color.value
     )
 
-    return nuevo_jugador
+    jugadores_actualizados = await crud_partidas.obtener_jugadores_partida(db, partida.id)
+    
+    return UnirseOut(
+        mensaje="Unido a la partida",
+        jugadores_en_sala=jugadores_actualizados
+    )
 
 @router.post("/{partida_id}/empezar", response_model=EmpezarPartidaOut, status_code=status.HTTP_200_OK)
 async def empezar_partida(

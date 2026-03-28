@@ -84,3 +84,7 @@ class AccionPausaOut(BaseModel):
     mensaje: str
     estado_actual: str
 
+class UnirseOut(BaseModel):
+    mensaje: str
+    jugadores_en_sala: list[JugadorPartidaRead]
+
