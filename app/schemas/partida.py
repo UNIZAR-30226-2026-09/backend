@@ -88,3 +88,5 @@ class UnirseOut(BaseModel):
     mensaje: str
     jugadores_en_sala: list[JugadorPartidaRead]
 
+class AbandonarOut(BaseModel):
+    mensaje: str

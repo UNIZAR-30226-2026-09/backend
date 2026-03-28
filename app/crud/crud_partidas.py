@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from typing import Optional
 
 from app.models.partida import (
@@ -11,6 +11,7 @@ from app.models.partida import (
     ColorJugador
 )
 from app.schemas.partida import PartidaCreate
+
 
 # ----------------------------------------------------------------------------
 # 1. CREAR PARTIDA Y CREADOR
@@ -212,3 +213,16 @@ async def obtener_estado_partida(db: AsyncSession, partida_id: int) -> Optional[
     query = select(EstadoPartida).where(EstadoPartida.partida_id == partida_id)
     resultado = await db.execute(query)
     return resultado.scalar_one_or_none()
+
+
+# ----------------------------------------------------------------------------
+# 8. Eliminar a un judador de la partida
+# ----------------------------
+async def eliminar_jugador(db: AsyncSession, partida_id: int, username: str) -> None:
+    await db.execute(
+        delete(JugadoresPartida).where(
+            JugadoresPartida.partida_id == partida_id,
+            JugadoresPartida.usuario_id == username
+        )
+    )
+    await db.commit()

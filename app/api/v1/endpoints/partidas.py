@@ -12,7 +12,7 @@ from app.core.logica_juego.combate import resolver_fortificacion
 from app.schemas.estado_juego import TerritorioBase
 
 from app.schemas.partida import PartidaCreate, PartidaRead, VotoPausa
-from app.schemas.partida import AccionPausaOut, EmpezarPartidaOut, VerEstadoPartidaOut, UnirseOut
+from app.schemas.partida import AccionPausaOut, EmpezarPartidaOut, VerEstadoPartidaOut, UnirseOut, AbandonarOut
 from app.schemas.partida import FortificarIn
 from app.models.partida import EstadosPartida, ColorJugador, EstadoPartida, FasePartida
 from app.api.deps import obtener_usuario_actual
@@ -140,6 +140,38 @@ async def unirse_partida(
         mensaje="Unido a la partida",
         jugadores_en_sala=jugadores_actualizados
     )
+
+@router.post("/{partida_id}/abandonar", response_model=AbandonarOut, status_code=status.HTTP_200_OK)
+async def abandonar_partida(
+    partida_id: int,
+    usuario_actual: User = Depends(obtener_usuario_actual),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Permite a un usuario abandonar una partida que se encuentra en la sala de espera (fase de creación).
+
+    - **partida_id**: Identificador único de la partida a abandonar.
+    - **usuario_actual**: Dependencia que valida el usuario actual autenticado.
+    - **db**: Sesión de base de datos asíncrona.
+
+    Retorna un mensaje de confirmación y la lista actualizada de jugadores que permanecen en la sala.
+    """
+    partida = await crud_partidas.obtener_partida_por_id(db, partida_id)
+    if not partida:
+        raise HTTPException(status_code=404, detail="Partida no encontrada")
+    if partida.estado != EstadosPartida.CREANDO:
+        raise HTTPException(status_code=400, detail="Solo puedes abandonar mientras la partida está en el lobby")
+
+    jugadores = await crud_partidas.obtener_jugadores_partida(db, partida_id)
+    if not any(j.usuario_id == usuario_actual.username for j in jugadores):
+        raise HTTPException(status_code=400, detail="No estás en esta partida")
+
+    await crud_partidas.eliminar_jugador(db, partida_id, usuario_actual.username)
+
+    await notifier.notificar_desconexion(partida_id, usuario_actual.username)
+
+    return AbandonarOut(mensaje="Has abandonado la partida")
+
 
 @router.post("/{partida_id}/empezar", response_model=EmpezarPartidaOut, status_code=status.HTTP_200_OK)
 async def empezar_partida(
@@ -350,4 +382,9 @@ async def fortificar_tropas(
         jugador_id=usuario_actual.username
     )
 
-    return {"mensaje": "Fortificación completada", "origen": datos.origen, "destino": datos.destino, "tropas": datos.tropas}
+    return {
+        "mensaje": "Fortificación completada",
+        "origen": datos.origen,
+        "destino": datos.destino,
+        "tropas": datos.tropas
+    }
