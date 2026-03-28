@@ -209,3 +209,34 @@ async def eliminar_jugador(db: AsyncSession, partida_id: int, username: str) -> 
         )
     )
     await db.commit()
+
+# ----------------------------------------------------------------------------
+# 9. OBTENER PARTIDA ACTIVA DEL JUGADOR
+# ----------------------------------------------------------------------------
+async def obtener_partida_activa_del_jugador(
+    db: AsyncSession, username: str
+) -> Optional[JugadoresPartida]:
+    """
+    Comprueba si un usuario ya pertenece a una partida que no ha terminado.
+    
+    Args:
+        db: Sesión de base de datos
+        username: Username del jugador
+        
+    Returns:
+        Objeto JugadoresPartida si está en una partida activa, None en caso contrario
+    """
+    query = (
+        select(JugadoresPartida)
+        .join(Partida, JugadoresPartida.partida_id == Partida.id)
+        .where(
+            JugadoresPartida.usuario_id == username,
+            Partida.estado.in_([
+                EstadosPartida.CREANDO,
+                EstadosPartida.ACTIVA,
+                EstadosPartida.PAUSADA,
+            ])
+        )
+    )
+    resultado = await db.execute(query)
+    return resultado.scalar_one_or_none()

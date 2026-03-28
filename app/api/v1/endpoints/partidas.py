@@ -54,6 +54,8 @@ async def crear_partida(
     
     Retorna los datos de la partida creada.
     """
+    if await crud_partidas.obtener_partida_activa_del_jugador(db, usuario_actual.username):
+        raise HTTPException(status_code=400, detail="Ya estás en una partida activa. Termínala o abandónala primero.")
 
     nuevo_codigo = generar_codigo_invitacion()
     
@@ -114,6 +116,9 @@ async def unirse_partida(
     for j in jugadores_actuales:
         if j.usuario_id == usuario_actual.username:
             raise HTTPException(status_code=400, detail="Ya estás dentro de esta partida")
+    
+    if await crud_partidas.obtener_partida_activa_del_jugador(db, usuario_actual.username):
+        raise HTTPException(status_code=400, detail="Ya estás en otra partida activa. Termínala o abandónala primero.")
 
     await crud_partidas.unir_jugador(
         db,

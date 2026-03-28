@@ -55,8 +55,75 @@ def test_flujo_completo_partida(client):
     
     # 6. EL INVITADO INTENTA UNIRSE OTRA VEZ (Debe fallar con 400)
     res_doble_union = client.post(
-        f"/api/v1/partidas/{codigo_invitacion}/unirse", 
+        f"/api/v1/partidas/{codigo_invitacion}/unirse",
         headers=headers_invitado
     )
     assert res_doble_union.status_code == 400
     assert "Ya estás dentro" in res_doble_union.json()["detail"]
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _registrar_y_login(client, username: str) -> dict:
+    client.post("/api/v1/usuarios/registro", json={
+        "username": username,
+        "email": f"{username}@test.com",
+        "password": "password_segura_123"
+    })
+    res = client.post("/api/v1/usuarios/login", data={
+        "username": username, "password": "password_segura_123"
+    })
+    return {"Authorization": f"Bearer {res.json()['access_token']}"}
+
+
+def _crear_partida(client, headers: dict) -> dict:
+    res = client.post("/api/v1/partidas", json={
+        "config_max_players": 3, "config_visibility": "publica", "config_timer_seconds": 60
+    }, headers=headers)
+    assert res.status_code == 200
+    return res.json()  # contiene id y codigo_invitacion
+
+
+# ---------------------------------------------------------------------------
+# Tests: restricción de partida activa
+# ---------------------------------------------------------------------------
+
+def test_no_puede_unirse_si_ya_esta_en_otra_partida(client):
+    headers_c1 = _registrar_y_login(client, "creador1")
+    headers_c2 = _registrar_y_login(client, "creador2")
+    headers_inv = _registrar_y_login(client, "invitado")
+
+    partida1 = _crear_partida(client, headers_c1)
+    partida2 = _crear_partida(client, headers_c2)
+
+    # Invitado se une a la primera partida
+    res1 = client.post(f"/api/v1/partidas/{partida1['codigo_invitacion']}/unirse", headers=headers_inv)
+    assert res1.status_code == 200
+
+    # Intenta unirse a la segunda → debe fallar
+    res2 = client.post(f"/api/v1/partidas/{partida2['codigo_invitacion']}/unirse", headers=headers_inv)
+    assert res2.status_code == 400
+    assert "otra partida" in res2.json()["detail"].lower()
+
+
+def test_puede_unirse_tras_abandonar_partida_anterior(client):
+    headers_c1 = _registrar_y_login(client, "creador1")
+    headers_c2 = _registrar_y_login(client, "creador2")
+    headers_inv = _registrar_y_login(client, "invitado")
+
+    partida1 = _crear_partida(client, headers_c1)
+    partida2 = _crear_partida(client, headers_c2)
+
+    # Invitado se une a la primera
+    res1 = client.post(f"/api/v1/partidas/{partida1['codigo_invitacion']}/unirse", headers=headers_inv)
+    assert res1.status_code == 200
+
+    # Abandona la primera
+    res_aban = client.post(f"/api/v1/partidas/{partida1['id']}/abandonar", headers=headers_inv)
+    assert res_aban.status_code == 200
+
+    # Ahora puede unirse a la segunda
+    res2 = client.post(f"/api/v1/partidas/{partida2['codigo_invitacion']}/unirse", headers=headers_inv)
+    assert res2.status_code == 200
