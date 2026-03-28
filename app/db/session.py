@@ -2,16 +2,15 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
 
-# 1. Preparamos los argumentos base compartidos
 engine_args = {
     "echo": False
 }
 
-# 2. Si la base de datos NO es SQLite (es decir, es PostgreSQL), añadimos el pooling
 if "sqlite" not in settings.DATABASE_URL:
     engine_args["pool_size"] = 5
     engine_args["max_overflow"] = 0
     engine_args["pool_pre_ping"] = True
+    engine_args["connect_args"] = {"ssl": True} 
 
 # Motor de conexión asíncrono dinámico
 engine = create_async_engine(

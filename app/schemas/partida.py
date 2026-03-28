@@ -86,6 +86,7 @@ class AccionPausaOut(BaseModel):
 class UnirseOut(BaseModel):
     mensaje: str
     jugadores_en_sala: list[JugadorPartidaRead]
+    creador: str
 
 class AbandonarOut(BaseModel):
     mensaje: str

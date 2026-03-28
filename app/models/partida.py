@@ -63,6 +63,7 @@ class Partida(Base):
     # Permitimos que sea NULL
     ganador: Mapped[str] = mapped_column(ForeignKey("usuarios.username", ondelete="SET NULL"), nullable=True)
 
+    creador: Mapped[str] = mapped_column(ForeignKey("usuarios.username", ondelete="SET NULL"), nullable=False)
 
     __table_args__ = (
         CheckConstraint('config_max_players >= 2 AND config_max_players <= 4', name='check_max_players_valido'),

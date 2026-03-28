@@ -39,7 +39,8 @@ async def crear_partida_y_creador(
         config_visibility=partida_in.config_visibility,
         config_timer_seconds=partida_in.config_timer_seconds,
         codigo_invitacion=codigo,
-        estado=EstadosPartida.CREANDO
+        estado=EstadosPartida.CREANDO,
+        creador=creador_username
     )
     
     db.add(nueva_partida)

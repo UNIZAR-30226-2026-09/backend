@@ -345,6 +345,7 @@ async def test_evento_cambio_fase_broadcast(db, monkeypatch):
         config_timer_seconds=1,
         codigo_invitacion="ABC123",
         estado=EstadosPartida.ACTIVA,
+        creador="u1",
     )
     db.add(usuario)
     db.add(partida)

@@ -131,7 +131,8 @@ async def unirse_partida(
     
     return UnirseOut(
         mensaje="Unido a la partida",
-        jugadores_en_sala=jugadores_actualizados
+        jugadores_en_sala=jugadores_actualizados,
+        creador=partida.creador
     )
 
 @router.post("/{partida_id}/abandonar", response_model=AbandonarOut, status_code=status.HTTP_200_OK)
@@ -192,25 +193,20 @@ async def empezar_partida(
     if partida.estado != EstadosPartida.CREANDO:
         raise HTTPException(status_code=400, detail="La partida ya ha empezado o está finalizada")
 
-    # Sacamos a los que están sentados en la mesa
     jugadores = await crud_partidas.obtener_jugadores_partida(db, partida_id)
 
     if len(jugadores) < 2:
-        raise HTTPException(status_code=400, detail="Mínimo 2 jugadores para darse de tortas")
+        raise HTTPException(status_code=400, detail="Mínimo 2 jugadores para empezar la partida")
 
-    # Controlamos que no le dé al botón cualquiera, solo el admin de la sala (turno 1)
-    jugador_creador = next((j for j in jugadores if j.turno == 1), None)
-    if not jugador_creador or jugador_creador.usuario_id != usuario_actual.username:
-        raise HTTPException(status_code=403, detail="Tú no mandas aquí, solo el creador puede empezar")
 
-    # Preparamos los datos para tu colega
+    if partida.creador != usuario_actual.username:
+        raise HTTPException(status_code=403, detail="Solo el creador puede empezar")
+
     jugadores_ids = [j.usuario_id for j in jugadores]
     comarcas_ids = list(game_map_state.comarcas.keys())
     
-    # Repartimos Aragón
     mapa_repartido = generar_reparto_inicial(jugadores_ids, comarcas_ids)
     
-    # Asignamos numero_jugador de forma aleatoria y damos 10 tropas de inicio
     numeros = list(range(1, len(jugadores) + 1))
     random.shuffle(numeros)
     estado_jugadores = {
@@ -220,14 +216,13 @@ async def empezar_partida(
         } for i, j in enumerate(jugadores)
     }
 
-    # Creamos el tablero real (T8)
     fin_fase = datetime.now(timezone.utc) + timedelta(seconds=partida.config_timer_seconds)
     
     nuevo_estado = EstadoPartida(
         partida_id=partida.id,
         fase_actual=FasePartida.REFUERZO,
         fin_fase_actual=fin_fase,
-        user_turno_actual=jugador_creador.usuario_id,
+        user_turno_actual=partida.creador,
         mapa=mapa_repartido,
         jugadores=estado_jugadores
     )
@@ -244,14 +239,14 @@ async def empezar_partida(
         partida_id=partida.id,
         mapa=mapa_repartido,
         jugadores=estado_jugadores,
-        turno_de=jugador_creador.usuario_id,
+        turno_de=partida.creador,
         fin_fase=fin_fase
     )
 
     return {
         "mensaje": "¡Aragón está en guerra!", 
         "partida_id": partida.id, 
-        "turno_de": jugador_creador.usuario_id,
+        "turno_de": partida.creador,
         "fase": "refuerzo"
     }
 
