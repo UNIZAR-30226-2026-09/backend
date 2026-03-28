@@ -5,13 +5,20 @@ import string
 import asyncio
 from datetime import datetime, timedelta, timezone
 
+
+from app.core.map_state import map_calculator
+from app.core.logica_juego.validaciones import validar_fortificacion
+from app.core.logica_juego.combate import resolver_fortificacion
+from app.schemas.estado_juego import TerritorioBase
+
 from app.schemas.partida import PartidaCreate, PartidaRead, JugadorPartidaRead, VotoPausa
 from app.schemas.partida import AccionPausaOut, EmpezarPartidaOut, VerEstadoPartidaOut
+from app.schemas.partida import FortificarIn
 from app.models.partida import EstadosPartida, ColorJugador, EstadoPartida, FasePartida
 from app.api.deps import obtener_usuario_actual
 from app.models.usuario import User
 from app.db.session import get_db
-from app.crud import crud_partidas
+from app.crud import crud_partidas, crud_combates
 
 # Cosas nuevas para empezar la partida
 from app.core.map_state import game_map_state
@@ -290,3 +297,51 @@ async def votar_pausa(
     - **db**: Sesión de base de datos asíncrona.
     """
     raise HTTPException(status_code=501, detail="No implementado")
+
+
+@router.post("/{partida_id}/fortificar", status_code=status.HTTP_200_OK)
+async def fortificar_tropas(
+    partida_id: int,
+    datos: FortificarIn,
+    usuario_actual: User = Depends(obtener_usuario_actual),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Fase final del turno: Permite redistribuir tropas aliadas entre dos territorios adyacentes.
+    """
+    estado = await crud_combates.obtener_estado_partida(db, partida_id)
+    if not estado:
+        raise HTTPException(status_code=404, detail="Estado de partida no encontrado")
+
+    t_origen = estado.mapa.get(datos.origen)
+    t_destino = estado.mapa.get(datos.destino)
+
+    if not t_origen or not t_destino:
+        raise HTTPException(status_code=400, detail="Territorio de origen o destino no existe en el mapa")
+
+    try:
+        validar_fortificacion(
+            estado_partida=estado,
+            jugador_id=usuario_actual.username,
+            origen_id=datos.origen,
+            t_origen=TerritorioBase(**t_origen),
+            destino_id=datos.destino,
+            t_destino=TerritorioBase(**t_destino),
+            tropas_a_mover=datos.tropas,
+            grafo_aragon=map_calculator
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    resolver_fortificacion(estado.mapa, datos.origen, datos.destino, datos.tropas)
+    await crud_combates.guardar_estado_partida(db, estado)
+
+    await notifier.enviar_movimiento_conquista(
+        partida_id=partida_id,
+        origen_id=datos.origen,
+        destino_id=datos.destino,
+        tropas=datos.tropas,
+        jugador_id=usuario_actual.username
+    )
+
+    return {"mensaje": "Fortificación completada", "origen": datos.origen, "destino": datos.destino, "tropas": datos.tropas}

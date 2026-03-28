@@ -5,6 +5,11 @@ from datetime import datetime
 # Nos traemos las opciones fijas (Enums) que hicieron los compis
 from app.models.partida import TipoVisibilidad, EstadosPartida, EstadoJugador, FasePartida, ColorJugador
 
+
+class FortificarIn(BaseModel):
+    origen: str
+    destino: str
+    tropas: int = Field(ge=1, description="Cantidad de tropas a desplazar")
  
 # PARTIDA PRINCIPAL (La sala de espera y configuración)
  
@@ -78,3 +83,4 @@ class VerEstadoPartidaOut(BaseModel):
 class AccionPausaOut(BaseModel):
     mensaje: str
     estado_actual: str
+

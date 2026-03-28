@@ -63,3 +63,7 @@ def resolver_tirada(tropas_atacantes_enviadas: int, tropas_defensoras_totales: i
 def resolver_colocacion_tropas(jugador_estado, t_destino, tropas_a_poner: int):
     jugador_estado.tropas_reserva -= tropas_a_poner
     t_destino.units += tropas_a_poner
+
+def resolver_fortificacion(estado_mapa: dict, origen_id: str, destino_id: str, tropas: int):
+    estado_mapa[origen_id]["units"] -= tropas
+    estado_mapa[destino_id]["units"] += tropas
