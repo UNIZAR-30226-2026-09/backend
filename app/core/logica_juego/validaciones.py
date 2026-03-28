@@ -66,6 +66,21 @@ def validar_colocacion_tropas(estado_partida, jugador_id: str, territorio_id: st
     if tropas_reserva < tropas_a_poner:
         raise ValueError(f"Solo tienes {tropas_reserva} tropas de reserva")
     
+def validar_camino_aliado(origen: str, destino: str, owner_id: str, estado_mapa: dict, grafo_aragon):
+    """
+    Decide qué territorios son del jugador y le pregunta al motor si hay camino.
+    """
+    # Obtener nodos
+    nodos_aliados = []
+    for comarca_id, datos in estado_mapa.items():
+        propietario = datos.get("owner_id") if isinstance(datos, dict) else datos.owner_id
+        if propietario == owner_id:
+            nodos_aliados.append(comarca_id)
+
+    # Preguntar al grafo            
+    if not grafo_aragon.existe_camino_restringido(origen, destino, nodos_aliados):
+        raise ValueError("No hay un camino por tus territorios para mover esas tropas.")
+
 
 def validar_fortificacion(
     estado_partida,
@@ -83,11 +98,9 @@ def validar_fortificacion(
 
     validar_propiedad_territorio(t_origen, jugador_id, "origen")
     validar_propiedad_territorio(t_destino, jugador_id, "destino")
-        
-    #! A evolucionar (pueden no estar conectadas pero haber camino)
-    if not grafo_aragon.son_vecinas(origen_id, destino_id):
-        raise ValueError("Los territorios no están conectados directamente.")
-        
+
+    validar_camino_aliado(origen_id, destino_id, jugador_id, estado_partida.mapa, grafo_aragon)
+
     validar_tropas(tropas_a_mover, t_origen.units)
     
     return True

@@ -51,5 +51,19 @@ class MapGraph:
         except (nx.NetworkXNoPath, nx.NodeNotFound):
             return -1
 
+    def existe_camino_restringido(self, origen: str, destino: str, nodos_permitidos: list[str]) -> bool:
+        """
+        Comprueba si hay ruta entre origen y destino pasando SOLO por los nodos indicados.
+        """
+        if origen not in nodos_permitidos or destino not in nodos_permitidos:
+            return False
+            
+        subgrafo = self.graph.subgraph(nodos_permitidos)
+        
+        try:
+            return nx.has_path(subgrafo, source=origen, target=destino)
+        except (nx.NetworkXNoPath, nx.NodeNotFound):
+            return False
+
 # Instancia global lista para ser importada desde cualquier sitio del backend
 map_calculator = MapGraph(game_map_state)

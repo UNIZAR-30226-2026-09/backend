@@ -1,15 +1,16 @@
 import pytest
 from app.core.logica_juego.combate import resolver_fortificacion
-from app.core.logica_juego.validaciones import validar_fortificacion
+from app.core.logica_juego.validaciones import validar_fortificacion, validar_camino_aliado
 from app.core.map_state import map_calculator, game_map_state
 from app.models.partida import FasePartida
 from app.schemas.estado_juego import TerritorioBase
 
 
 class EstadoDummy:
-    def __init__(self, turno="j1", fase=FasePartida.FORTIFICACION):
+    def __init__(self, turno="j1", fase=FasePartida.FORTIFICACION, mapa=None):
         self.user_turno_actual = turno
         self.fase_actual = fase
+        self.mapa = mapa if mapa is not None else {}
 
 
 def _get_vecinas():
@@ -28,6 +29,33 @@ def _get_no_vecinas():
             if a != b and not map_calculator.son_vecinas(a, b):
                 return a, b
     raise RuntimeError("No se encontró par de comarcas no colindantes en el mapa")
+
+
+def _mapa_aliado(origen_id: str, destino_id: str, jugador="j1") -> dict:
+    """Mapa mínimo con origen y destino del mismo jugador."""
+    return {
+        origen_id: {"owner_id": jugador, "units": 5},
+        destino_id: {"owner_id": jugador, "units": 2},
+    }
+
+
+def _get_camino_indirecto():
+    """
+    Devuelve (origen, destino, mapa) donde origen y destino no son vecinos directos
+    pero están conectados a través de un nodo intermedio aliado.
+    """
+    for b_id in game_map_state.comarcas.keys():
+        vecinos_b = map_calculator.obtener_vecinos(b_id)
+        for a_id in vecinos_b:
+            for c_id in vecinos_b:
+                if a_id != c_id and not map_calculator.son_vecinas(a_id, c_id):
+                    mapa = {
+                        a_id: {"owner_id": "j1", "units": 5},
+                        b_id: {"owner_id": "j1", "units": 3},
+                        c_id: {"owner_id": "j1", "units": 2},
+                    }
+                    return a_id, c_id, mapa
+    raise RuntimeError("No se encontró camino indirecto en el mapa")
 
 
 # ---------------------------------------------------------------------------
@@ -73,7 +101,8 @@ def test_validar_fortificacion_ok():
     t_origen = TerritorioBase(owner_id="j1", units=4)
     t_destino = TerritorioBase(owner_id="j1", units=1)
     resultado = validar_fortificacion(
-        EstadoDummy(), "j1", origen_id, t_origen, destino_id, t_destino, 2, map_calculator
+        EstadoDummy(mapa=_mapa_aliado(origen_id, destino_id)),
+        "j1", origen_id, t_origen, destino_id, t_destino, 2, map_calculator
     )
     assert resultado is True
 
@@ -131,13 +160,15 @@ def test_validar_fortificacion_destino_no_propio():
 # validar_fortificacion — adyacencia
 # ---------------------------------------------------------------------------
 
-def test_validar_fortificacion_territorios_no_colindantes():
+def test_validar_fortificacion_territorios_sin_camino_aliado():
     origen_id, destino_id = _get_no_vecinas()
     t_origen = TerritorioBase(owner_id="j1", units=3)
     t_destino = TerritorioBase(owner_id="j1", units=2)
-    with pytest.raises(ValueError, match="conectados"):
+    # Solo origen y destino en el mapa — sin intermediarios aliados → sin camino
+    with pytest.raises(ValueError, match="camino"):
         validar_fortificacion(
-            EstadoDummy(), "j1", origen_id, t_origen, destino_id, t_destino, 1, map_calculator
+            EstadoDummy(mapa=_mapa_aliado(origen_id, destino_id)),
+            "j1", origen_id, t_origen, destino_id, t_destino, 1, map_calculator
         )
 
 
@@ -151,7 +182,8 @@ def test_validar_fortificacion_deja_origen_sin_tropas():
     t_destino = TerritorioBase(owner_id="j1", units=1)
     with pytest.raises(ValueError, match="1 tropa"):
         validar_fortificacion(
-            EstadoDummy(), "j1", origen_id, t_origen, destino_id, t_destino, 3, map_calculator
+            EstadoDummy(mapa=_mapa_aliado(origen_id, destino_id)),
+            "j1", origen_id, t_origen, destino_id, t_destino, 3, map_calculator
         )
 
 
@@ -161,7 +193,8 @@ def test_validar_fortificacion_tropas_superiores_a_las_disponibles():
     t_destino = TerritorioBase(owner_id="j1", units=1)
     with pytest.raises(ValueError, match="suficientes tropas"):
         validar_fortificacion(
-            EstadoDummy(), "j1", origen_id, t_origen, destino_id, t_destino, 10, map_calculator
+            EstadoDummy(mapa=_mapa_aliado(origen_id, destino_id)),
+            "j1", origen_id, t_origen, destino_id, t_destino, 10, map_calculator
         )
 
 
@@ -171,5 +204,70 @@ def test_validar_fortificacion_tropas_cero():
     t_destino = TerritorioBase(owner_id="j1", units=1)
     with pytest.raises(ValueError, match="al menos una tropa"):
         validar_fortificacion(
-            EstadoDummy(), "j1", origen_id, t_origen, destino_id, t_destino, 0, map_calculator
+            EstadoDummy(mapa=_mapa_aliado(origen_id, destino_id)),
+            "j1", origen_id, t_origen, destino_id, t_destino, 0, map_calculator
         )
+
+
+# ---------------------------------------------------------------------------
+# validar_fortificacion — camino indirecto aliado (caso nuevo)
+# ---------------------------------------------------------------------------
+
+def test_validar_fortificacion_camino_indirecto_aliado_ok():
+    origen_id, destino_id, mapa = _get_camino_indirecto()
+    t_origen = TerritorioBase(owner_id="j1", units=4)
+    t_destino = TerritorioBase(owner_id="j1", units=1)
+    resultado = validar_fortificacion(
+        EstadoDummy(mapa=mapa),
+        "j1", origen_id, t_origen, destino_id, t_destino, 2, map_calculator
+    )
+    assert resultado is True
+
+
+def test_validar_fortificacion_camino_indirecto_bloqueado_por_enemigo():
+    origen_id, destino_id, mapa = _get_camino_indirecto()
+    # El nodo intermedio es del enemigo: quitarlo del mapa aliado
+    intermedios = [k for k in mapa if k != origen_id and k != destino_id]
+    for k in intermedios:
+        mapa[k]["owner_id"] = "enemigo"
+
+    t_origen = TerritorioBase(owner_id="j1", units=4)
+    t_destino = TerritorioBase(owner_id="j1", units=1)
+    with pytest.raises(ValueError, match="camino"):
+        validar_fortificacion(
+            EstadoDummy(mapa=mapa),
+            "j1", origen_id, t_origen, destino_id, t_destino, 2, map_calculator
+        )
+
+
+# ---------------------------------------------------------------------------
+# validar_camino_aliado — tests unitarios
+# ---------------------------------------------------------------------------
+
+def test_validar_camino_aliado_ok_vecinos_directos():
+    origen_id, destino_id = _get_vecinas()
+    mapa = _mapa_aliado(origen_id, destino_id)
+    # No debe lanzar excepción
+    validar_camino_aliado(origen_id, destino_id, "j1", mapa, map_calculator)
+
+
+def test_validar_camino_aliado_sin_camino_lanza_error():
+    origen_id, destino_id = _get_no_vecinas()
+    mapa = _mapa_aliado(origen_id, destino_id)
+    with pytest.raises(ValueError, match="camino"):
+        validar_camino_aliado(origen_id, destino_id, "j1", mapa, map_calculator)
+
+
+def test_validar_camino_aliado_con_intermediario_aliado():
+    origen_id, destino_id, mapa = _get_camino_indirecto()
+    # No debe lanzar excepción
+    validar_camino_aliado(origen_id, destino_id, "j1", mapa, map_calculator)
+
+
+def test_validar_camino_aliado_intermediario_enemigo_bloquea():
+    origen_id, destino_id, mapa = _get_camino_indirecto()
+    intermedios = [k for k in mapa if k != origen_id and k != destino_id]
+    for k in intermedios:
+        mapa[k]["owner_id"] = "enemigo"
+    with pytest.raises(ValueError, match="camino"):
+        validar_camino_aliado(origen_id, destino_id, "j1", mapa, map_calculator)
