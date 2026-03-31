@@ -8,17 +8,17 @@
     "frontera_pirenaica": {
       "name": "Frontera Pirenaica",
       "bonus_troops": 6,
-      "comarcas": ["cinco_villas", "jacetania", "alto_gallego", "sobrarbe", "hoya_de_huesca"]
+      "comarcas": ["cinco_villas", "la_jacetania", "alto_gallego", "sobrarbe", "hoya_de_huesca"]
     },
     "estepas_y_condados": {
       "name": "Estepas y Condados",
       "bonus_troops": 6,
-      "comarcas": ["ribagorza", "somontano_de_barbastro", "cinca_medio", "la_litera", "monegros", "bajo_cinca"]
+      "comarcas": ["la_ribagorza", "somontano_de_barbastro", "cinca_medio", "litera", "monegros", "bajo_cinca"]
     },
     "alto_ebro": {
       "name": "Alto Ebro",
       "bonus_troops": 7,
-      "comarcas": ["tarazona_y_el_moncayo", "campo_de_borja", "ribera_alta_del_ebro", "comarca_central", "aranda", "valdejalon", "comunidad_de_calatayud"]
+      "comarcas": ["tarazona_y_el_moncayo", "campo_de_borja", "ribera_alta_del_ebro", "zaragoza", "aranda", "valdejalon", "comunidad_de_calatayud"]
     },
     "campos_serrania": {
       "name": "Campos de Serranía",
@@ -28,52 +28,52 @@
     "valles_matarrana": {
       "name": "Valles del Matarraña",
       "bonus_troops": 7,
-      "comarcas": ["bajo_martin", "andorra_sierra_de_arcos", "bajo_aragon", "matarrana", "ribera_baja_del_ebro", "bajo_aragon_caspe"]
+      "comarcas": ["bajo_martin", "andorra", "bajo_aragon", "matarrana", "ribera_baja_del_ebro", "bajo_aragon_caspe"]
     },
     "sierras_sur": {
       "name": "Sierras del Sur",
       "bonus_troops": 4,
-      "comarcas": ["comunidad_de_teruel", "sierra_de_albarracin", "maestrazgo", "gudar_javalambre"]
+      "comarcas": ["comunidad_de_teruel", "sierra_de_albarracin", "maestrazgo", "gudar"]
     }
   },
   "comarcas": {
-    "jacetania": { "name": "La Jacetania", "region_id": "frontera_pirenaica", "adjacent_to": ["alto_gallego", "hoya_de_huesca"] },
-    "alto_gallego": { "name": "Alto Gállego", "region_id": "frontera_pirenaica", "adjacent_to": ["jacetania", "hoya_de_huesca", "sobrarbe", "somontano_de_barbastro"] },
-    "sobrarbe": { "name": "Sobrarbe", "region_id": "frontera_pirenaica", "adjacent_to": ["alto_gallego", "somontano_de_barbastro", "ribagorza"] },
-    "hoya_de_huesca": { "name": "Hoya de Huesca", "region_id": "frontera_pirenaica", "adjacent_to": ["jacetania", "alto_gallego", "cinco_villas", "somontano_de_barbastro", "monegros"] },
-    "cinco_villas": { "name": "Cinco Villas", "region_id": "frontera_pirenaica", "adjacent_to": ["hoya_de_huesca", "comarca_central", "ribera_alta_del_ebro", "campo_de_borja"] },
+    "la_jacetania": { "name": "La Jacetania", "region_id": "frontera_pirenaica", "adjacent_to": ["alto_gallego", "hoya_de_huesca"] },
+    "alto_gallego": { "name": "Alto Gállego", "region_id": "frontera_pirenaica", "adjacent_to": ["la_jacetania", "hoya_de_huesca", "sobrarbe", "somontano_de_barbastro"] },
+    "sobrarbe": { "name": "Sobrarbe", "region_id": "frontera_pirenaica", "adjacent_to": ["alto_gallego", "somontano_de_barbastro", "la_ribagorza"] },
+    "hoya_de_huesca": { "name": "Hoya de Huesca", "region_id": "frontera_pirenaica", "adjacent_to": ["la_jacetania", "alto_gallego", "cinco_villas", "somontano_de_barbastro", "monegros"] },
+    "cinco_villas": { "name": "Cinco Villas", "region_id": "frontera_pirenaica", "adjacent_to": ["hoya_de_huesca", "zaragoza", "ribera_alta_del_ebro", "campo_de_borja"] },
     
-    "ribagorza": { "name": "La Ribagorza", "region_id": "estepas_y_condados", "adjacent_to": ["sobrarbe", "somontano_de_barbastro", "la_litera"] },
-    "somontano_de_barbastro": { "name": "Somontano de Barbastro", "region_id": "estepas_y_condados", "adjacent_to": ["alto_gallego", "sobrarbe", "hoya_de_huesca", "la_litera", "cinca_medio", "monegros", "ribagorza"] },
-    "cinca_medio": { "name": "Cinca Medio", "region_id": "estepas_y_condados", "adjacent_to": ["somontano_de_barbastro", "la_litera", "monegros", "bajo_cinca"] },
-    "la_litera": { "name": "La Litera", "region_id": "estepas_y_condados", "adjacent_to": ["ribagorza", "somontano_de_barbastro", "cinca_medio", "bajo_cinca"] },
-    "monegros": { "name": "Los Monegros", "region_id": "estepas_y_condados", "adjacent_to": ["hoya_de_huesca", "somontano_de_barbastro", "cinca_medio", "bajo_cinca", "comarca_central"] },
-    "bajo_cinca": { "name": "Bajo Cinca", "region_id": "estepas_y_condados", "adjacent_to": ["cinca_medio", "monegros", "la_litera", "bajo_aragon_caspe"] },
+    "la_ribagorza": { "name": "La Ribagorza", "region_id": "estepas_y_condados", "adjacent_to": ["sobrarbe", "somontano_de_barbastro", "litera"] },
+    "somontano_de_barbastro": { "name": "Somontano de Barbastro", "region_id": "estepas_y_condados", "adjacent_to": ["alto_gallego", "sobrarbe", "hoya_de_huesca", "litera", "cinca_medio", "monegros", "la_ribagorza"] },
+    "cinca_medio": { "name": "Cinca Medio", "region_id": "estepas_y_condados", "adjacent_to": ["somontano_de_barbastro", "litera", "monegros", "bajo_cinca"] },
+    "litera": { "name": "La Litera", "region_id": "estepas_y_condados", "adjacent_to": ["la_ribagorza", "somontano_de_barbastro", "cinca_medio", "bajo_cinca"] },
+    "monegros": { "name": "Los Monegros", "region_id": "estepas_y_condados", "adjacent_to": ["hoya_de_huesca", "somontano_de_barbastro", "cinca_medio", "bajo_cinca", "zaragoza"] },
+    "bajo_cinca": { "name": "Bajo Cinca", "region_id": "estepas_y_condados", "adjacent_to": ["cinca_medio", "monegros", "litera", "bajo_aragon_caspe"] },
 
     "tarazona_y_el_moncayo": { "name": "Tarazona y el Moncayo", "region_id": "alto_ebro", "adjacent_to": ["campo_de_borja", "aranda"] },
     "campo_de_borja": { "name": "Campo de Borja", "region_id": "alto_ebro", "adjacent_to": ["cinco_villas", "tarazona_y_el_moncayo", "aranda", "ribera_alta_del_ebro", "valdejalon"] },
-    "ribera_alta_del_ebro": { "name": "Ribera Alta del Ebro", "region_id": "alto_ebro", "adjacent_to": ["cinco_villas", "campo_de_borja", "valdejalon", "comarca_central"] },
-    "comarca_central": { "name": "Comarca Central", "region_id": "alto_ebro", "adjacent_to": ["cinco_villas", "monegros", "ribera_alta_del_ebro", "valdejalon", "campo_de_carinena", "campo_de_belchite", "ribera_baja_del_ebro"] },
+    "ribera_alta_del_ebro": { "name": "Ribera Alta del Ebro", "region_id": "alto_ebro", "adjacent_to": ["cinco_villas", "campo_de_borja", "valdejalon", "zaragoza"] },
+    "zaragoza": { "name": "Comarca Central", "region_id": "alto_ebro", "adjacent_to": ["cinco_villas", "monegros", "ribera_alta_del_ebro", "valdejalon", "campo_de_carinena", "campo_de_belchite", "ribera_baja_del_ebro"] },
     "aranda": { "name": "Aranda", "region_id": "alto_ebro", "adjacent_to": ["tarazona_y_el_moncayo", "campo_de_borja", "valdejalon", "comunidad_de_calatayud"] },
-    "valdejalon": { "name": "Valdejalón", "region_id": "alto_ebro", "adjacent_to": ["campo_de_borja", "ribera_alta_del_ebro", "aranda", "comunidad_de_calatayud", "comarca_central", "campo_de_carinena"] },
+    "valdejalon": { "name": "Valdejalón", "region_id": "alto_ebro", "adjacent_to": ["campo_de_borja", "ribera_alta_del_ebro", "aranda", "comunidad_de_calatayud", "zaragoza", "campo_de_carinena"] },
     "comunidad_de_calatayud": { "name": "Comunidad de Calatayud", "region_id": "alto_ebro", "adjacent_to": ["aranda", "valdejalon", "campo_de_carinena", "campo_de_daroca"] },
 
-    "campo_de_carinena": { "name": "Campo de Cariñena", "region_id": "campos_serrania", "adjacent_to": ["valdejalon", "comunidad_de_calatayud", "campo_de_belchite", "comarca_central", "campo_de_daroca"] },
-    "campo_de_belchite": { "name": "Campo de Belchite", "region_id": "campos_serrania", "adjacent_to": ["campo_de_carinena", "comarca_central", "campo_de_daroca"] },
+    "campo_de_carinena": { "name": "Campo de Cariñena", "region_id": "campos_serrania", "adjacent_to": ["valdejalon", "comunidad_de_calatayud", "campo_de_belchite", "zaragoza", "campo_de_daroca"] },
+    "campo_de_belchite": { "name": "Campo de Belchite", "region_id": "campos_serrania", "adjacent_to": ["campo_de_carinena", "zaragoza", "campo_de_daroca"] },
     "campo_de_daroca": { "name": "Campo de Daroca", "region_id": "campos_serrania", "adjacent_to": ["comunidad_de_calatayud", "campo_de_belchite", "campo_de_carinena", "jiloca"] },
-    "cuencas_mineras": { "name": "Cuencas Mineras", "region_id": "campos_serrania", "adjacent_to": ["jiloca", "andorra_sierra_de_arcos", "maestrazgo", "comunidad_de_teruel"] },
+    "cuencas_mineras": { "name": "Cuencas Mineras", "region_id": "campos_serrania", "adjacent_to": ["jiloca", "andorra", "maestrazgo", "comunidad_de_teruel"] },
     "jiloca": { "name": "Jiloca", "region_id": "campos_serrania", "adjacent_to": ["campo_de_daroca", "cuencas_mineras", "comunidad_de_teruel", "sierra_de_albarracin"] },
 
-    "bajo_martin": { "name": "Bajo Martín", "region_id": "valles_matarrana", "adjacent_to": ["ribera_baja_del_ebro", "andorra_sierra_de_arcos", "bajo_aragon"] },
-    "andorra_sierra_de_arcos": { "name": "Andorra-Sierra de Arcos", "region_id": "valles_matarrana", "adjacent_to": ["cuencas_mineras", "bajo_martin", "bajo_aragon", "maestrazgo"] },
-    "bajo_aragon": { "name": "Bajo Aragón", "region_id": "valles_matarrana", "adjacent_to": ["bajo_martin", "matarrana", "andorra_sierra_de_arcos", "maestrazgo"] },
+    "bajo_martin": { "name": "Bajo Martín", "region_id": "valles_matarrana", "adjacent_to": ["ribera_baja_del_ebro", "andorra", "bajo_aragon"] },
+    "andorra": { "name": "Andorra-Sierra de Arcos", "region_id": "valles_matarrana", "adjacent_to": ["cuencas_mineras", "bajo_martin", "bajo_aragon", "maestrazgo"] },
+    "bajo_aragon": { "name": "Bajo Aragón", "region_id": "valles_matarrana", "adjacent_to": ["bajo_martin", "matarrana", "andorra", "maestrazgo"] },
     "matarrana": { "name": "Matarraña", "region_id": "valles_matarrana", "adjacent_to": ["bajo_aragon"] },
-    "ribera_baja_del_ebro": { "name": "Ribera Baja del Ebro", "region_id": "valles_matarrana", "adjacent_to": ["bajo_martin", "bajo_aragon_caspe", "comarca_central"] },
+    "ribera_baja_del_ebro": { "name": "Ribera Baja del Ebro", "region_id": "valles_matarrana", "adjacent_to": ["bajo_martin", "bajo_aragon_caspe", "zaragoza"] },
     "bajo_aragon_caspe": { "name": "Bajo Aragón-Caspe", "region_id": "valles_matarrana", "adjacent_to": ["ribera_baja_del_ebro", "bajo_cinca"] },
 
-    "comunidad_de_teruel": { "name": "Comunidad de Teruel", "region_id": "sierras_sur", "adjacent_to": ["jiloca", "cuencas_mineras", "sierra_de_albarracin", "gudar_javalambre", "maestrazgo"] },
+    "comunidad_de_teruel": { "name": "Comunidad de Teruel", "region_id": "sierras_sur", "adjacent_to": ["jiloca", "cuencas_mineras", "sierra_de_albarracin", "gudar", "maestrazgo"] },
     "sierra_de_albarracin": { "name": "Sierra de Albarracín", "region_id": "sierras_sur", "adjacent_to": ["comunidad_de_teruel", "jiloca"] },
-    "maestrazgo": { "name": "Maestrazgo", "region_id": "sierras_sur", "adjacent_to": ["andorra_sierra_de_arcos", "comunidad_de_teruel", "gudar_javalambre", "bajo_aragon", "cuencas_mineras"] },
-    "gudar_javalambre": { "name": "Gúdar-Javalambre", "region_id": "sierras_sur", "adjacent_to": ["comunidad_de_teruel", "maestrazgo"] }
+    "maestrazgo": { "name": "Maestrazgo", "region_id": "sierras_sur", "adjacent_to": ["andorra", "comunidad_de_teruel", "gudar", "bajo_aragon", "cuencas_mineras"] },
+    "gudar": { "name": "Gúdar-Javalambre", "region_id": "sierras_sur", "adjacent_to": ["comunidad_de_teruel", "maestrazgo"] }
   }
 }
