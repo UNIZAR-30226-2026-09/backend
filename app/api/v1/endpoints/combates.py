@@ -155,13 +155,16 @@ async def pasar_fase_manual(
     
     Retorna la información actualizada de la nueva fase y a quién corresponde el turno.
     """
-
     estado_partida = await obtener_estado_partida(db, partida_id)
     
     if estado_partida.user_turno_actual != usuario_actual.username:
         raise HTTPException(403, "Quieto ahí, no es tu turno")
 
-    nuevo_estado = await avanzar_fase(partida_id, db, estado_partida.fase_actual)
+    try:
+        nuevo_estado = await avanzar_fase(partida_id, db, estado_partida.fase_actual)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    
     if not nuevo_estado:
         raise HTTPException(400, "Error al avanzar la fase")
 
