@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
+from sqlalchemy.orm.attributes import flag_modified
 from typing import Optional
 
 from app.models.partida import (
@@ -240,3 +241,19 @@ async def obtener_partida_activa_del_jugador(
     )
     resultado = await db.execute(query)
     return resultado.scalars().first()
+
+# ----------------------------------------------------------------------------
+# 10. Actualizar tropas reserva
+# ----------------------------------------------------------------------------
+async def actualizar_tropas_reserva(db: AsyncSession, estado: EstadoPartida, usuario_id: str,
+      cantidad: int) -> None:
+    """
+        Actualiza el saldo de tropas en el JSONB 'jugadores' del EstadoPartida.
+    """
+
+    if usuario_id in estado.jugadores:
+        estado.jugadores[usuario_id]["tropas_reserva"] += cantidad
+    else:
+        estado.jugadores[usuario_id] = {"tropas_reserva": cantidad}
+    
+    flag_modified(estado, "jugadores")

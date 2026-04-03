@@ -1,6 +1,6 @@
 import asyncio
 from datetime import datetime, timedelta, timezone
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -8,6 +8,10 @@ from app.db.session import AsyncSessionLocal
 
 from app.models.partida import EstadoPartida, FasePartida, JugadoresPartida, EstadoJugador
 from app.core.ws_manager import manager
+
+from app.core.logica_juego.utils import obtener_territorios_jugador
+from app.crud.crud_partidas import actualizar_tropas_reserva
+
 
 # Guarda las tareas para que Python no las borre por error
 tareas_en_segundo_plano = set()
@@ -43,9 +47,13 @@ async def avanzar_fase(
     nueva_fase = TRANSICIONES[estado.fase_actual]
 
     # Cambio de jugador si se vuelve a Refuerzo
+    tropas_recibidas = 0
     if nueva_fase == FasePartida.REFUERZO:
         estado.user_turno_actual = await calcular_siguiente_jugador(partida_id, estado.user_turno_actual, db)
 
+        tropas_recibidas = await asignar_tropas_reserva(estado, db)
+    
+    
     # Actualizamos fase y tiempo límite
     temporizador = estado.partida.config_timer_seconds
     estado.fase_actual = nueva_fase
@@ -57,6 +65,7 @@ async def avanzar_fase(
         "tipo_evento": "CAMBIO_FASE",
         "nueva_fase": nueva_fase.value,
         "jugador_activo": estado.user_turno_actual,
+        "tropas_recibidas": tropas_recibidas,
         "fin_fase_utc": estado.fin_fase_actual.isoformat()
     }, partida_id)
 
@@ -135,3 +144,18 @@ async def calcular_siguiente_jugador(partida_id: int, jugador_actual: str, db: A
 
     indice_actual = indice_jugador_actual(jugadores, jugador_actual)
     return siguiente_jugador_vivo(jugadores, indice_actual)
+
+async def asignar_tropas_reserva(estado: EstadoPartida, db: AsyncSession) -> int:
+    """
+    Calcula y asigna las tropas de refuerzo a un jugador basándose en sus territorios.
+    Regla: territorios / 3 (mínimo 3).
+    """
+    
+    territorios_propios = obtener_territorios_jugador(estado.mapa, estado.user_turno_actual)
+
+    # Minimo le damos 3 en cada ronda    
+    tropas_recibidas = max(3, len(territorios_propios) // 3)
+
+    await actualizar_tropas_reserva(db, estado, estado.user_turno_actual, tropas_recibidas)
+    
+    return tropas_recibidas
