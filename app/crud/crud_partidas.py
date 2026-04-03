@@ -251,9 +251,16 @@ async def actualizar_tropas_reserva(db: AsyncSession, estado: EstadoPartida, usu
         Actualiza el saldo de tropas en el JSONB 'jugadores' del EstadoPartida.
     """
 
-    if usuario_id in estado.jugadores:
-        estado.jugadores[usuario_id]["tropas_reserva"] += cantidad
-    else:
-        estado.jugadores[usuario_id] = {"tropas_reserva": cantidad}
+    if usuario_id not in estado.jugadores:
+        # Si el jugador no existe (raro), lo inicializamos con valores base
+        estado.jugadores[usuario_id] = {
+            "numero_jugador": 0,
+            "tropas_reserva": 0,
+            "movimiento_conquista_pendiente": False
+        }
+    
+    # Obtenemos el saldo actual de forma segura (fallback a 0)
+    actual = estado.jugadores[usuario_id].get("tropas_reserva", 0)
+    estado.jugadores[usuario_id]["tropas_reserva"] = actual + cantidad
     
     flag_modified(estado, "jugadores")

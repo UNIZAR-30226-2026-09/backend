@@ -218,7 +218,11 @@ async def empezar_partida(
     random.shuffle(numeros)
     estado_jugadores = {
         j.usuario_id: {
-            "numero_jugador": numeros[i]
+            "numero_jugador": numeros[i],
+            "tropas_reserva": 0,
+            "movimiento_conquista_pendiente": False,
+            "origen_conquista": None,
+            "destino_conquista": None
         } for i, j in enumerate(jugadores)
     }
 
