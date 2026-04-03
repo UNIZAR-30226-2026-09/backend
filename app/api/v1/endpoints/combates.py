@@ -46,6 +46,8 @@ async def ejecutar_ataque(
     t_origen = obtener_datos_territorio(estado_partida.mapa, ataque_in.territorio_origen_id)
     t_destino = obtener_datos_territorio(estado_partida.mapa, ataque_in.territorio_destino_id)
 
+    defensor_id = t_destino.owner_id
+
     try:
         validar_ataque_convencional(
             estado_partida, ataque_in.territorio_origen_id, t_origen,
@@ -69,6 +71,20 @@ async def ejecutar_ataque(
     estado_partida.jugadores[atacante_id] = jugador_estado.model_dump()
 
     await crud_combates.guardar_estado_partida(db, estado_partida)
+
+    if resultado.victoria_atacante:
+        eliminado = await crud_combates.verificar_eliminacion_jugador(
+            db=db, 
+            partida_id=partida_id, 
+            defensor_id=defensor_id, 
+            mapa_actualizado=estado_partida.mapa
+        )
+        if eliminado:
+            await notifier.broadcast({
+                "tipo_evento": "JUGADOR_ELIMINADO",
+                "username": defensor_id,
+                "mensaje": f"¡{defensor_id} ha sido borrado del mapa!"
+            }, partida_id)
 
     await notifier.enviar_resultado_ataque(
         partida_id, 
@@ -161,7 +177,11 @@ async def pasar_fase_manual(
     if estado_partida.user_turno_actual != usuario_actual.username:
         raise HTTPException(403, "Quieto ahí, no es tu turno")
 
-    nuevo_estado = await avanzar_fase(partida_id, db, estado_partida.fase_actual)
+    try:
+        nuevo_estado = await avanzar_fase(partida_id, db, estado_partida.fase_actual)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))    
+    
     if not nuevo_estado:
         raise HTTPException(400, "Error al avanzar la fase")
 
