@@ -180,3 +180,22 @@ def test_numeros_jugador_son_unicos_y_en_rango(client):
 
     numeros = [v["numero_jugador"] for v in estado["jugadores"].values()]
     assert sorted(numeros) == list(range(1, len(numeros) + 1))
+
+
+def test_jugador_1_recibe_tropas_al_empezar(client):
+    headers_c = _registrar_y_login(client, "creador")
+    headers_j2 = _registrar_y_login(client, "jugador2")
+
+    partida = _crear_partida(client, headers_c)
+    client.post(f"/api/v1/partidas/{partida['codigo_invitacion']}/unirse", headers=headers_j2)
+
+    # Al empezar, el backend debe calcular y asignar tropas al Turno 1
+    inicio = _empezar_partida(client, partida["id"], headers_c)
+    estado = _ver_estado(client, partida["id"])
+
+    turno_de = inicio["turno_de"]
+    jugadores = estado["jugadores"]
+
+    # Verificamos que el jugador que tiene el turno NO tenga 0 tropas
+    # (Como mínimo debería tener 3 según la regla de territorios/3)
+    assert jugadores[turno_de]["tropas_reserva"] >= 3

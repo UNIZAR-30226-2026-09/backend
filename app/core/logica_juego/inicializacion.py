@@ -47,3 +47,30 @@ def repartir_tropas_iniciales(mapa: dict, jugadores_ids: list[str]) -> None:
         for _ in range(len(territorios_jugador)):
             territorio_elegido = random.choice(territorios_jugador)
             mapa[territorio_elegido]["units"] += 1
+
+
+def determinar_orden_jugadores(jugadores):
+    """
+    Asigna un orden aleatorio a los jugadores einicializa sus estados
+    """
+
+    numeros = list(range(1, len(jugadores) + 1))
+    random.shuffle(numeros)
+    
+    estado_jugadores = {}
+    jugador_turno_1 = None
+    
+    for i, j in enumerate(jugadores):
+        j.turno = numeros[i]
+        estado_jugadores[j.usuario_id] = {
+            "numero_jugador": j.turno,
+            "tropas_reserva": 0,
+            "movimiento_conquista_pendiente": False,
+            "origen_conquista": None,
+            "destino_conquista": None
+        }
+        
+        if j.turno == 1:
+            jugador_turno_1 = j.usuario_id
+            
+    return estado_jugadores, jugador_turno_1

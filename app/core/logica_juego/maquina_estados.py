@@ -9,8 +9,9 @@ from app.db.session import AsyncSessionLocal
 from app.models.partida import EstadoPartida, FasePartida, JugadoresPartida, EstadoJugador
 from app.core.ws_manager import manager
 
-from app.core.logica_juego.utils import obtener_territorios_jugador
 from app.crud.crud_partidas import actualizar_tropas_reserva
+from app.core.logica_juego.utils import obtener_territorios_jugador
+
 
 
 # Guarda las tareas para que Python no las borre por error
@@ -60,6 +61,7 @@ async def avanzar_fase(
     estado.fin_fase_actual = datetime.now(timezone.utc) + timedelta(seconds=temporizador)
     await db.commit()
 
+    print(f"Enviamos al front --- tropas_recibidas: {tropas_recibidas}")
     # Notificación a front-end
     await manager.broadcast({
         "tipo_evento": "CAMBIO_FASE",
