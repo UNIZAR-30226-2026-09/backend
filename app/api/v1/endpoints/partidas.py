@@ -22,8 +22,8 @@ from app.crud import crud_partidas, crud_combates
 
 # Cosas nuevas para empezar la partida
 from app.core.map_state import game_map_state
-from app.core.logica_juego.inicializacion import generar_reparto_inicial, repartir_tropas_iniciales
-from app.core.logica_juego.maquina_estados import iniciar_temporizador, tareas_en_segundo_plano, timers_por_partida
+from app.core.logica_juego.inicializacion import generar_reparto_inicial, repartir_tropas_iniciales, determinar_orden_jugadores
+from app.core.logica_juego.maquina_estados import iniciar_temporizador, tareas_en_segundo_plano, asignar_tropas_reserva
 
 from app.core.ws_manager import manager
 from app.core.notifier import notifier
@@ -214,19 +214,8 @@ async def empezar_partida(
     
     repartir_tropas_iniciales(mapa_repartido, jugadores_ids)
 
-    numeros = list(range(1, len(jugadores) + 1))
-    random.shuffle(numeros)
-    estado_jugadores = {
-        j.usuario_id: {
-            "numero_jugador": numeros[i]
-        } for i, j in enumerate(jugadores)
-    }
+    estado_jugadores, jugador_turno_1 = determinar_orden_jugadores(jugadores)
 
-    jugador_turno_1 = None
-    for i, j in enumerate(jugadores):
-        j.turno = numeros[i]
-        if j.turno == 1:
-            jugador_turno_1 = j.usuario_id
 
     fin_fase = datetime.now(timezone.utc) + timedelta(seconds=partida.config_timer_seconds)
     
@@ -239,6 +228,8 @@ async def empezar_partida(
         jugadores=estado_jugadores
     )
 
+    await asignar_tropas_reserva(nuevo_estado, db) 
+
     # Guardamos el inicio de la partida (estado ACTIVA + EstadoPartida)
     await crud_partidas.guardar_inicio_partida(db, partida, nuevo_estado)
 
@@ -250,7 +241,7 @@ async def empezar_partida(
     await notifier.enviar_inicio_partida(
         partida_id=partida.id,
         mapa=mapa_repartido,
-        jugadores=estado_jugadores,
+        jugadores=nuevo_estado.jugadores,
         turno_de=jugador_turno_1,
         fin_fase=fin_fase
     )

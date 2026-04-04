@@ -23,6 +23,15 @@ class GameNotifier:
         await manager.broadcast(payload, partida_id)
 
     @staticmethod
+    async def enviar_fin_partida(partida_id: int, ganador: str):
+
+        await manager.broadcast({
+            "tipo_evento": "PARTIDA_FINALIZADA",
+            "ganador": ganador,
+            "mensaje": f"La partida ha terminado. {ganador} ha conquistado todos los territorios."
+        }, partida_id)
+
+    @staticmethod
     async def notificar_nuevo_jugador(partida_id: int, username: str):
         await manager.broadcast({
             "tipo_evento": "NUEVO_JUGADOR",
@@ -63,6 +72,14 @@ class GameNotifier:
             "tropas_totales_ahora": totales
         }, partida_id)
 
+    @staticmethod
+    async def enviar_jugador_eliminado(partida_id: int, username: str):
+
+        await manager.broadcast({
+            "tipo_evento": "JUGADOR_ELIMINADO",
+            "username": username,
+            "mensaje": f"¡{username} ha sido borrado del mapa!"
+        }, partida_id)
 
     @staticmethod
     async def enviar_sincronizacion_reconexion(partida_id: int, username: str, estado):
