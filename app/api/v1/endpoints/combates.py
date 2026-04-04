@@ -10,7 +10,7 @@ from app.db.session import get_db
 from app.schemas.combate import AtaqueCreate, ResultadoAtaqueCompleto, MoverConquistaIn, MoverConquistaOut, ColocarTropasIn, PasarFaseOut, ColocarTropasOut
 from app.schemas.estado_juego import TerritorioBase, JugadorBase
 from app.crud import crud_combates
-from app.crud.crud_partidas import obtener_estado_partida
+from app.crud.crud_partidas import obtener_estado_partida, verificar_y_finalizar_partida
 
 from app.core.logica_juego.validaciones import validar_colocacion_tropas
 from app.core.logica_juego.combate import resolver_colocacion_tropas, aplicar_resultado_combate, ejecutar_conquista
@@ -71,7 +71,7 @@ async def ejecutar_ataque(
     estado_partida.jugadores[atacante_id] = jugador_estado.model_dump()
 
     await crud_combates.guardar_estado_partida(db, estado_partida)
-
+    
     if resultado.victoria_atacante:
         eliminado = await crud_combates.verificar_eliminacion_jugador(
             db=db, 
@@ -80,11 +80,12 @@ async def ejecutar_ataque(
             mapa_actualizado=estado_partida.mapa
         )
         if eliminado:
-            await notifier.broadcast({
-                "tipo_evento": "JUGADOR_ELIMINADO",
-                "username": defensor_id,
-                "mensaje": f"¡{defensor_id} ha sido borrado del mapa!"
-            }, partida_id)
+            await notifier.enviar_jugador_eliminado(partida_id, defensor_id)
+            # Verificar si la partida ya ha terminado
+            ganador = await verificar_y_finalizar_partida(db, partida_id)
+            if ganador:
+
+                await notifier.enviar_fin_partida(partida_id, ganador)
 
     await notifier.enviar_resultado_ataque(
         partida_id, 

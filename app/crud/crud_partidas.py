@@ -9,6 +9,7 @@ from app.models.partida import (
     EstadoPartida,
     EstadosPartida,
     TipoVisibilidad,
+    EstadoJugador
 )
 from app.schemas.partida import PartidaCreate
 
@@ -264,3 +265,47 @@ async def actualizar_tropas_reserva(db: AsyncSession, estado: EstadoPartida, usu
     estado.jugadores[usuario_id]["tropas_reserva"] = actual + cantidad
     
     flag_modified(estado, "jugadores")
+
+
+# ----------------------------------------------------------------------------
+# 11. OBTENER JUGADORES VIVOS
+# ----------------------------------------------------------------------------
+async def obtener_jugadores_vivos(db: AsyncSession, partida_id: int) -> list[JugadoresPartida]:
+    """
+    Devuelve la lista de jugadores que siguen vivos en una partida específica.
+    """
+
+    query = select(JugadoresPartida).where(
+        JugadoresPartida.partida_id == partida_id,
+        JugadoresPartida.estado_jugador == EstadoJugador.VIVO
+    )
+    resultado = await db.execute(query)
+    return resultado.scalars().all()
+
+# ----------------------------------------------------------------------------
+# 12. VERIFICAR Y FINALIZAR PARTIDA SI HAY UN SOLO GANADOR
+# ----------------------------------------------------------------------------
+async def verificar_y_finalizar_partida(db: AsyncSession, partida_id: int) -> Optional[str]:
+    """
+    Comprueba cuántos jugadores siguen vivos en la partida.
+    Si solo queda uno, finaliza la partida y lo establece como ganador.
+    Retorna el username del ganador o None si el juego continúa.
+    """
+
+    jugadores_vivos = await obtener_jugadores_vivos(db, partida_id)
+
+    # Solo un jugador, hay que terminar la partida
+    if len(jugadores_vivos) == 1:
+
+        ganador_username = jugadores_vivos[0].usuario_id
+        partida = await obtener_partida_por_id(db, partida_id)
+
+        if partida:
+            partida.estado = EstadosPartida.FINALIZADA
+            partida.ganador = ganador_username
+            await db.commit()
+            
+        return ganador_username
+
+    # Hay más de un jugador, la partida sigue
+    return None

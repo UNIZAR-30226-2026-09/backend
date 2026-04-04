@@ -61,7 +61,6 @@ async def avanzar_fase(
     estado.fin_fase_actual = datetime.now(timezone.utc) + timedelta(seconds=temporizador)
     await db.commit()
 
-    print(f"Enviamos al front --- tropas_recibidas: {tropas_recibidas}")
     # Notificación a front-end
     await manager.broadcast({
         "tipo_evento": "CAMBIO_FASE",
