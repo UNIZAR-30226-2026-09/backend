@@ -42,8 +42,8 @@ async def avanzar_fase(
     if not estado or (fase_actual_solicitada and estado.fase_actual != fase_actual_solicitada):
         return None
 
-    estado.movimiento_conquista_pendiente
-    if getattr(estado, "movimiento_conquista_pendiente", False):
+    jugador_actual = estado.jugadores.get(estado.user_turno_actual, {})
+    if jugador_actual.get("movimiento_conquista_pendiente", False):
         raise ValueError("Debes reubicar tus tropas antes de pasar de fase.")
 
     nueva_fase = TRANSICIONES[estado.fase_actual]

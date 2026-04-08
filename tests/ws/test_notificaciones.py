@@ -379,7 +379,7 @@ async def test_evento_cambio_fase_broadcast(db, monkeypatch):
     payload, partida_id = broadcast_payloads[0]
     assert partida_id == partida.id
     assert _assert_tipo_evento(payload, "CAMBIO_FASE")
-    assert payload["nueva_fase"] == FasePartida.ATAQUE_CONVENCIONAL.value
+    assert payload["nueva_fase"] == FasePartida.GESTION.value
     assert payload["jugador_activo"] == "u1"
     assert "fin_fase_utc" in payload
 
