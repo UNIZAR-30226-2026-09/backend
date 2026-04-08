@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 
 from app.core.map_state import map_calculator
 from app.core.logica_juego.validaciones import validar_fortificacion, validar_asignar_trabajo, validar_asignar_investigacion
-from app.core.logica_juego.constantes import PRECIOS_TECNOLOGIA
+from app.core.logica_juego.constantes import PRECIOS_TECNOLOGIA, ARBOL_TECNOLOGICO
 from app.core.logica_juego.combate import resolver_fortificacion
 from app.core.logica_juego.utils import obtener_datos_territorio
 from app.schemas.estado_juego import TerritorioBase
@@ -467,3 +467,15 @@ async def comprar_tecnologia(partida_id: int, datos: ComprarTecnologiaIn, usuari
     await db.commit()
 
     return {"mensaje": f"Has adquirido {tech_id} con éxito. Te quedan {jugador['monedas']} monedas."}
+
+@router.get("/tecnologias", status_code=status.HTTP_200_OK)
+async def obtener_info_tecnologias(usuario_actual: User = Depends(obtener_usuario_actual)):
+    """
+    Devuelve la estructura completa del Árbol Tecnológico y el listado de precios.
+    Ideal para que el Frontend dibuje la tienda dinámicamente.
+    """
+    return {
+        "mensaje": "Árbol tecnológico recuperado con éxito",
+        "arbol": ARBOL_TECNOLOGICO,
+        "precios": PRECIOS_TECNOLOGIA
+    }
