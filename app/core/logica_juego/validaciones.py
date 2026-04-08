@@ -102,3 +102,30 @@ def validar_fortificacion(
     validar_tropas(tropas_a_mover, t_origen.units)
     
     return True
+
+def validar_fase_gestion(estado_partida, jugador_id: str):
+    validar_turno(estado_partida.user_turno_actual, jugador_id)
+    validar_fase(estado_partida.fase_actual, FasePartida.GESTION)
+
+def validar_asignar_trabajo(estado_partida, jugador_id: str, territorio_id: str, t_destino):
+    validar_fase_gestion(estado_partida, jugador_id)
+    validar_propiedad_territorio(t_destino, jugador_id, "trabajo")
+    
+    # Validar que no hay ya un territorio trabajando
+    if estado_partida.jugadores[jugador_id].get("territorio_trabajando") is not None:
+        raise ValueError("Ya tienes un territorio trabajando en este turno.")
+        
+    # Validar que este territorio no esté ya investigando (no puede hacer las dos cosas)
+    if t_destino.estado_bloqueo is not None:
+        raise ValueError("Este territorio ya está ocupado.")
+
+def validar_asignar_investigacion(estado_partida, jugador_id: str, territorio_id: str, t_destino, rama: str):
+    validar_fase_gestion(estado_partida, jugador_id)
+    validar_propiedad_territorio(t_destino, jugador_id, "investigacion")
+    
+    # Validar que no hay ya un territorio investigando
+    if estado_partida.jugadores[jugador_id].get("territorio_investigando") is not None:
+        raise ValueError("Ya tienes un territorio investigando en este turno.")
+        
+    if t_destino.estado_bloqueo is not None:
+        raise ValueError("Este territorio ya está ocupado.")

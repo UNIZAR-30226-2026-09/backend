@@ -90,3 +90,13 @@ class UnirseOut(BaseModel):
 
 class AbandonarOut(BaseModel):
     mensaje: str
+
+class AsignarTrabajoIn(BaseModel):
+    territorio_id: str
+
+class AsignarInvestigacionIn(BaseModel):
+    territorio_id: str
+    rama: str = Field(pattern="^(biologica|logistica|artilleria)$")
+
+class ComprarTecnologiaIn(BaseModel):
+    tecnologia_id: str
