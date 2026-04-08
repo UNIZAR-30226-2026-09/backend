@@ -1,12 +1,48 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from app.core.ws_manager import manager
 from app.core.event_handler import process_event
 from app.core.notifier import notifier
 
-from app.db.session import AsyncSessionLocal
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.session import AsyncSessionLocal, get_db
 from app.crud.crud_partidas import obtener_estado_partida
+from app.crud.crud_amigos import obtener_nombres_amigos
 
 router = APIRouter()
+
+@router.websocket("/global/{username}")
+async def websocket_global_endpoint(
+    websocket: WebSocket, 
+    username: str, 
+    db: AsyncSession = Depends(get_db)
+):
+    # Conectamos al manager global
+    await manager.connect_global(websocket, username)
+    
+    amigos = await obtener_nombres_amigos(db, username)
+    for amigo in amigos:
+        if amigo in manager.global_connections:
+            await manager.global_connections[amigo].send_json({
+                "tipo_evento": "PRESENCIA",
+                "username": username,
+                "estado": "online"
+            })
+
+    try:
+        while True:
+            # Mantenemos la conexión viva
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect_global(username)
+        
+        for amigo in amigos:
+            if amigo in manager.global_connections:
+                await manager.global_connections[amigo].send_json({
+                    "tipo_evento": "PRESENCIA",
+                    "username": username,
+                    "estado": "offline"
+                })
 
 @router.websocket("/ws/{id_partida}/{username}")
 async def websocket_endpoint(websocket: WebSocket, id_partida: int, username: str):
