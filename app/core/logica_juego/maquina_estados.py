@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.db.session import AsyncSessionLocal
 
@@ -10,6 +11,7 @@ from app.models.partida import EstadoPartida, FasePartida, JugadoresPartida, Est
 from app.core.ws_manager import manager
 from app.crud.crud_partidas import actualizar_tropas_reserva
 from app.core.logica_juego.utils import obtener_territorios_jugador
+from app.core.logica_juego.constantes import ARBOL_TECNOLOGICO
 
 # Guarda las tareas para que Python no las borre por error
 tareas_en_segundo_plano = set()
@@ -52,6 +54,10 @@ async def avanzar_fase(
         estado.user_turno_actual = await calcular_siguiente_jugador(partida_id, estado.user_turno_actual, db)
 
         tropas_recibidas = await asignar_tropas_reserva(estado, db)
+    
+    elif nueva_fase == FasePartida.GESTION:
+        # Se resuelve para el jugador que tiene el turno actualmente
+        await resolver_gestion_ronda(estado, estado.user_turno_actual)
     
     
     # Actualizamos fase y tiempo límite
@@ -154,3 +160,50 @@ async def asignar_tropas_reserva(estado: EstadoPartida, db: AsyncSession) -> int
     await actualizar_tropas_reserva(db, estado, estado.user_turno_actual, tropas_recibidas)
     
     return tropas_recibidas
+
+
+async def resolver_gestion_ronda(estado: EstadoPartida, user_id: str):
+    """
+    Se ejecuta al iniciar la fase de GESTIÓN. 
+    Resuelve el trabajo e investigación pendientes del turno anterior.
+    """
+    jugador = estado.jugadores.get(user_id)
+    if not jugador:
+        return
+
+    # RESOLVER TRABAJO (Dinero)
+    t_trabajo_id = jugador.get("territorio_trabajando")
+    if t_trabajo_id and t_trabajo_id in estado.mapa:
+        tropas = estado.mapa[t_trabajo_id]["units"]
+        ganancia = tropas * 100  # Tu fórmula: tropas * 100
+        jugador["monedas"] += ganancia
+        
+        # Liberamos el territorio
+        estado.mapa[t_trabajo_id]["estado_bloqueo"] = None
+        jugador["territorio_trabajando"] = None
+        print(f"💰 {user_id} ha ganado {ganancia} monedas trabajando en {t_trabajo_id}")
+
+    # RESOLVER INVESTIGACIÓN (Predesbloqueo)
+    t_invest_id = jugador.get("territorio_investigando")
+    rama = jugador.get("rama_investigando")
+    if t_invest_id and rama and t_invest_id in estado.mapa:
+        # Avanzamos el nivel en esa rama
+        actual_nivel = jugador["nivel_ramas"].get(rama, 0)
+        nuevo_nivel = actual_nivel + 1
+        jugador["nivel_ramas"][rama] = nuevo_nivel
+        
+        # Predesbloqueamos las tecnologías de ese nivel
+        techs_a_desbloquear = ARBOL_TECNOLOGICO.get(rama, {}).get(nuevo_nivel, [])
+        for tech in techs_a_desbloquear:
+            if tech not in jugador["tecnologias_predesbloqueadas"]:
+                jugador["tecnologias_predesbloqueadas"].append(tech)
+        
+        # Liberamos el territorio
+        estado.mapa[t_invest_id]["estado_bloqueo"] = None
+        jugador["territorio_investigando"] = None
+        jugador["rama_investigando"] = None
+        print(f"🧬 {user_id} ha predesbloqueado el Nivel {nuevo_nivel} de {rama}")
+
+    # Notificar a SQLAlchemy que el JSON ha cambiado
+    flag_modified(estado, "jugadores")
+    flag_modified(estado, "mapa")

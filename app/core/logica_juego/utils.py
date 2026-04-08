@@ -1,9 +1,6 @@
 from fastapi import HTTPException, status
 from app.schemas.estado_juego import TerritorioBase, JugadorBase
 
-
-
-
 def obtener_territorios_jugador(mapa: dict, jugador_id: str) -> list[str]:
     """
     Devuelve la lista de IDs de las comarcas que pertenecen a un jugador.
