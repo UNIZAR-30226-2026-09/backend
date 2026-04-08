@@ -65,6 +65,21 @@ async def ejecutar_ataque(
         ejecutar_conquista(t_destino, jugador_estado, atacante_id, 
                           ataque_in.territorio_origen_id, 
                           ataque_in.territorio_destino_id)
+        
+        if getattr(t_destino, "estado_bloqueo", None) is not None:
+            # Quitamos el bloqueo al territorio
+            t_destino.estado_bloqueo = None
+            
+            # Le quitamos el proyecto al jugador que ha sido derrotado
+            if defensor_id in estado_partida.jugadores:
+                defensor_dict = estado_partida.jugadores[defensor_id]
+                
+                if defensor_dict.get("territorio_trabajando") == ataque_in.territorio_destino_id:
+                    defensor_dict["territorio_trabajando"] = None
+                    
+                if defensor_dict.get("territorio_investigando") == ataque_in.territorio_destino_id:
+                    defensor_dict["territorio_investigando"] = None
+                    defensor_dict["rama_investigando"] = None
 
     estado_partida.mapa[ataque_in.territorio_origen_id] = t_origen.model_dump()
     estado_partida.mapa[ataque_in.territorio_destino_id] = t_destino.model_dump()

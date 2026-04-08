@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
 import random
 import string
 import asyncio
@@ -7,13 +8,16 @@ from datetime import datetime, timedelta, timezone
 
 
 from app.core.map_state import map_calculator
-from app.core.logica_juego.validaciones import validar_fortificacion
+from app.core.logica_juego.validaciones import validar_fortificacion, validar_asignar_trabajo, validar_asignar_investigacion
+from app.core.logica_juego.constantes import PRECIOS_TECNOLOGIA
 from app.core.logica_juego.combate import resolver_fortificacion
+from app.core.logica_juego.utils import obtener_datos_territorio
 from app.schemas.estado_juego import TerritorioBase
 
 from app.schemas.partida import PartidaCreate, PartidaRead, VotoPausa
 from app.schemas.partida import AccionPausaOut, EmpezarPartidaOut, VerEstadoPartidaOut, UnirseOut, AbandonarOut
 from app.schemas.partida import FortificarIn
+from app.schemas.partida import AsignarTrabajoIn, AsignarInvestigacionIn, ComprarTecnologiaIn
 from app.models.partida import EstadosPartida, EstadoPartida, FasePartida
 from app.api.deps import obtener_usuario_actual
 from app.models.usuario import User
@@ -381,3 +385,85 @@ async def fortificar_tropas(
         "destino": datos.destino,
         "tropas": datos.tropas
     }
+
+@router.post("/{partida_id}/trabajar")
+async def asignar_trabajo(partida_id: int, datos: AsignarTrabajoIn, usuario_actual: User = Depends(obtener_usuario_actual), db: AsyncSession = Depends(get_db)):
+    estado = await crud_partidas.obtener_estado_partida(db, partida_id)
+    jugador_id = usuario_actual.username
+    t_destino = obtener_datos_territorio(estado.mapa, datos.territorio_id)
+
+    try:
+        validar_asignar_trabajo(estado, jugador_id, datos.territorio_id, t_destino)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+    # Aplicamos el bloqueo
+    t_destino.estado_bloqueo = "trabajando"
+    estado.jugadores[jugador_id]["territorio_trabajando"] = datos.territorio_id
+    estado.mapa[datos.territorio_id] = t_destino.model_dump()
+
+    flag_modified(estado, "jugadores")
+    flag_modified(estado, "mapa")
+    await db.commit()
+
+    return {"mensaje": f"El territorio {datos.territorio_id} se ha puesto a trabajar."}
+
+@router.post("/{partida_id}/investigar")
+async def asignar_investigacion(partida_id: int, datos: AsignarInvestigacionIn, usuario_actual: User = Depends(obtener_usuario_actual), db: AsyncSession = Depends(get_db)):
+    estado = await crud_partidas.obtener_estado_partida(db, partida_id)
+    jugador_id = usuario_actual.username
+    t_destino = obtener_datos_territorio(estado.mapa, datos.territorio_id)
+
+    try:
+        validar_asignar_investigacion(estado, jugador_id, datos.territorio_id, t_destino, datos.rama)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+    # Aplicamos el bloqueo
+    t_destino.estado_bloqueo = "investigando"
+    estado.jugadores[jugador_id]["territorio_investigando"] = datos.territorio_id
+    estado.jugadores[jugador_id]["rama_investigando"] = datos.rama
+    estado.mapa[datos.territorio_id] = t_destino.model_dump()
+
+    flag_modified(estado, "jugadores")
+    flag_modified(estado, "mapa")
+    await db.commit()
+
+    return {"mensaje": f"El territorio {datos.territorio_id} está investigando la rama {datos.rama}."}
+
+@router.post("/{partida_id}/comprar_tecnologia")
+async def comprar_tecnologia(partida_id: int, datos: ComprarTecnologiaIn, usuario_actual: User = Depends(obtener_usuario_actual), db: AsyncSession = Depends(get_db)):
+    estado = await crud_partidas.obtener_estado_partida(db, partida_id)
+    jugador_id = usuario_actual.username
+    jugador = estado.jugadores.get(jugador_id)
+
+    if not jugador:
+        raise HTTPException(404, "Jugador no encontrado")
+
+    if estado.fase_actual.value != "gestion":
+        raise HTTPException(400, "Solo puedes comprar tecnologías en la fase de gestión.")
+
+    tech_id = datos.tecnologia_id
+
+    # Validaciones de compra
+    if tech_id not in jugador.get("tecnologias_predesbloqueadas", []):
+        raise HTTPException(400, "No tienes esta tecnología predesbloqueada.")
+
+    if tech_id in jugador.get("tecnologias_compradas", []):
+        raise HTTPException(400, "Ya has comprado esta tecnología.")
+
+    precio = PRECIOS_TECNOLOGIA.get(tech_id)
+    if not precio:
+        raise HTTPException(400, "Tecnología no válida.")
+
+    if jugador.get("monedas", 0) < precio:
+        raise HTTPException(400, f"Monedas insuficientes. Necesitas {precio} y tienes {jugador.get('monedas')}.")
+
+    # Ejecutar compra
+    jugador["monedas"] -= precio
+    jugador["tecnologias_compradas"].append(tech_id)
+
+    flag_modified(estado, "jugadores")
+    await db.commit()
+
+    return {"mensaje": f"Has adquirido {tech_id} con éxito. Te quedan {jugador['monedas']} monedas."}
