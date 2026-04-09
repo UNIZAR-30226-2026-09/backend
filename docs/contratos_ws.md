@@ -156,6 +156,37 @@ Para establecer la conexión, el cliente debe abrir un socket hacia la siguiente
         "error": "Formato incorrecto. Falta el campo 'accion'."
     }
     ```
+---
 
-## 4. EVENTOS PENDIENTES DE DOCUMENTAR
+## 4. SISTEMA DE PRESENCIA Y AMIGOS (Canal Global)
+
+Para recibir notificaciones sociales fuera de una partida, el cliente debe abrir un socket hacia la siguiente URI:
+`ws://<host>/api/v1/global/{username}`
+
+### 4.1. Notificación de Presencia (Online/Offline)
+* **Dirección:** Servidor -> Cliente (Personalizado)
+* **Descripción:** Se emite automáticamente cuando un usuario de tu lista de amigos (aceptados) se conecta o desconecta de la aplicación.
+* **Payload recibido:**
+    ```json
+    {
+        "tipo_evento": "PRESENCIA",
+        "username": "nombre_del_amigo",
+        "estado": "online" // "offline"
+    }
+    ```
+
+### 4.2. Notificación de Solicitud de Amistad
+* **Dirección:** Servidor -> Cliente (Personalizado)
+* **Descripción:** Se emite al instante cuando otro jugador te envía una solicitud de amistad HTTP y te encuentras con la aplicación abierta.
+* **Payload recibido:**
+    ```json
+    {
+        "tipo_evento": "NUEVA_SOLICITUD_AMISTAD",
+        "de": "nombre_del_solicitante"
+    }
+ 
+    ```
+
+
+## 5. EVENTOS PENDIENTES DE DOCUMENTAR
 Hay eventos pendientes de documentar en limpio!
