@@ -297,7 +297,7 @@ async def test_evento_tropas_colocadas_broadcast(monkeypatch):
     def fake_validar_colocacion_tropas(*args, **kwargs):
         return None
 
-    def fake_resolver_colocacion_tropas(jugador_estado, t_destino, tropas):
+    async def fake_resolver_colocacion_tropas(jugador_estado, t_destino, tropas, **kwargs):
         jugador_estado.tropas_reserva -= tropas
         t_destino.units += tropas
 
@@ -356,7 +356,7 @@ async def test_evento_cambio_fase_broadcast(db, monkeypatch):
 
     estado = EstadoPartida(
         partida_id=partida.id,
-        fase_actual=FasePartida.REFUERZO,
+        fase_actual=FasePartida.FORTIFICACION,
         fin_fase_actual=datetime.now(timezone.utc),
         user_turno_actual="u1",
         mapa={},
@@ -373,13 +373,13 @@ async def test_evento_cambio_fase_broadcast(db, monkeypatch):
 
     monkeypatch.setattr(manager, "broadcast", spy_broadcast)
 
-    await avanzar_fase(partida.id, db, FasePartida.REFUERZO)
+    await avanzar_fase(partida.id, db, FasePartida.FORTIFICACION)
 
     assert broadcast_payloads
     payload, partida_id = broadcast_payloads[0]
     assert partida_id == partida.id
     assert _assert_tipo_evento(payload, "CAMBIO_FASE")
-    assert payload["nueva_fase"] == FasePartida.GESTION.value
+    assert payload["nueva_fase"] == FasePartida.REFUERZO.value
     assert payload["jugador_activo"] == "u1"
     assert "fin_fase_utc" in payload
 

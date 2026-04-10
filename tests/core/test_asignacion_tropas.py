@@ -18,9 +18,8 @@ async def test_asignar_tropas_reserva_minimo(db: AsyncSession):
         jugadores={}
     )
     
-    tropas = await asignar_tropas_reserva(estado, db)
-    
-    assert tropas == 3
+    await asignar_tropas_reserva(estado, db)
+
     assert estado.jugadores["user1"]["tropas_reserva"] == 3
 
 @pytest.mark.asyncio
@@ -36,9 +35,8 @@ async def test_asignar_tropas_reserva_calculo(db: AsyncSession):
         jugadores={"user1": {"tropas_reserva": 5}} # Ya tenia 5
     )
     
-    tropas = await asignar_tropas_reserva(estado, db)
-    
-    assert tropas == 4
+    await asignar_tropas_reserva(estado, db)
+
     # 5 que tenia + 4 nuevas = 9
     assert estado.jugadores["user1"]["tropas_reserva"] == 9
 

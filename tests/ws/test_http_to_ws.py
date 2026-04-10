@@ -273,7 +273,7 @@ async def test_http_colocar_tropas_emite_ws(monkeypatch):
     def fake_validar_colocacion_tropas(*args, **kwargs):
         return None
 
-    def fake_resolver_colocacion_tropas(jugador_estado, t_destino, tropas):
+    async def fake_resolver_colocacion_tropas(jugador_estado, t_destino, tropas, **kwargs):
         jugador_estado.tropas_reserva -= tropas
         t_destino.units += tropas
 
