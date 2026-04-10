@@ -4,6 +4,9 @@ from app.schemas.estado_juego import TerritorioBase
 from app.models.partida import FasePartida
 from app.core.logica_juego.utils import obtener_territorios_jugador
 
+from app.core.logica_juego.config_ataques_especiales import TipoEfecto
+
+
 def validar_turno(jugador_actual: str, jugador_id: str):
     if jugador_actual != jugador_id:
         raise ValueError("No es tu turno.")
@@ -27,6 +30,24 @@ def validar_tropas(tropas_a_mover: int, tropas_disponibles: int):
         raise ValueError("No tienes suficientes tropas libres.")
     if tropas_disponibles - tropas_a_mover < 1:
         raise ValueError("Debes dejar al menos 1 tropa libre en el territorio de origen.")
+    
+
+def _territorio_tiene_inhibidor(territorio) -> bool:
+    efectos = territorio.efectos if hasattr(territorio, "efectos") else territorio.get("efectos", [])
+    for e in efectos:
+        tipo = e.tipo_efecto if hasattr(e, "tipo_efecto") else e.get("tipo_efecto")
+        if tipo == TipoEfecto.INHIBIDOR_SENAL:
+            return True
+    return False
+
+def _ataque_bloqueado_por_muro(t_origen, destino_id: str) -> bool:
+    efectos = t_origen.efectos if hasattr(t_origen, "efectos") else t_origen.get("efectos", [])
+    for e in efectos:
+        tipo = e.tipo_efecto if hasattr(e, "tipo_efecto") else e.get("tipo_efecto")
+        bloquea_hacia = e.bloquea_hacia if hasattr(e, "bloquea_hacia") else e.get("bloquea_hacia")
+        if tipo == TipoEfecto.MURO and bloquea_hacia == destino_id:
+            return True
+    return False
 
 def validar_ataque_convencional(
     estado_partida,
@@ -40,6 +61,13 @@ def validar_ataque_convencional(
     validar_turno(estado_partida.user_turno_actual, jugador_id)
     validar_fase(estado_partida.fase_actual, FasePartida.ATAQUE_CONVENCIONAL)
     
+    if _territorio_tiene_inhibidor(t_origen):
+        raise ValueError("Tus comunicaciones están inhibidas. No puedes atacar desde este territorio.")
+        
+    if _ataque_bloqueado_por_muro(t_origen, destino_id):
+        raise ValueError("Un Muro Fronterizo bloquea el paso de tus tropas hacia ese territorio.")
+
+
     if not grafo_aragon.son_vecinas(origen_id, destino_id):
         raise ValueError("Los territorios no están conectados.")
     

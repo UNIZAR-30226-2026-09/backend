@@ -1,11 +1,18 @@
 from pydantic import BaseModel, Field
 from typing import Dict, List, Optional
 
+class EfectoActivo(BaseModel):
+    tipo_efecto: str
+    duracion_restante: int
+    origen_jugador_id: str
+    bloquea_hacia: Optional[str] = None
+
 # JSONB Mapa
 class TerritorioBase(BaseModel):
     owner_id: str
     units: int = Field(ge=0, description="Número de tropas. No puede ser negativo.")
     estado_bloqueo: Optional[str] = None
+    efectos: List[EfectoActivo] = Field(default_factory=list)
 
 class JugadorBase(BaseModel):
     numero_jugador: int = Field(default=1, ge=1, le=4)
@@ -27,3 +34,4 @@ class JugadorBase(BaseModel):
 
     tecnologias_predesbloqueadas: List[str] = Field(default_factory=list)
     tecnologias_compradas: List[str] = Field(default_factory=list)
+    efectos: List[EfectoActivo] = Field(default_factory=list)

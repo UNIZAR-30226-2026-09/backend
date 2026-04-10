@@ -1,6 +1,10 @@
 import random
-from app.schemas.combate import ResultadoAtaqueCompleto
+import math
 
+from app.schemas.combate import ResultadoAtaqueCompleto
+from app.core.logica_juego.config_ataques_especiales import TipoEfecto
+
+from app.core.notifier import notifier
 
 def validar_tropas(tropas_atacantes: int, tropas_defensoras: int):
     if tropas_atacantes < 1 or tropas_defensoras < 1:
@@ -39,9 +43,30 @@ def calcular_estado_final(tropas_defensoras, bajas_defensor):
     return tropas_restantes, victoria
 
 
-def resolver_colocacion_tropas(jugador_estado, t_destino, tropas_a_poner: int):
-    jugador_estado.tropas_reserva -= tropas_a_poner
+
+
+async def resolver_colocacion_tropas(jugador_estado, t_destino, tropas_a_poner: int, data_territorio: dict, jugadores_estado: dict, partida_id):
+    
+    # Si tiene efecto de propaganda, le robamos tropas
+    tropas_robadas = 0
+    
+    if data_territorio:
+        efectos = data_territorio.get("efectos", [])
+        propaganda = next((e for e in efectos if e.get("tipo_efecto") == TipoEfecto.PROPAGANDA), None)
+        
+        if propaganda:
+            tropas_robadas = math.ceil(tropas_a_poner * 0.50)
+            tropas_a_poner -= tropas_robadas
+            
+            atacante_id = propaganda.get("origen_jugador_id")
+            if jugadores_estado and atacante_id in jugadores_estado:
+                jugadores_estado[atacante_id]["tropas_reserva"] += tropas_robadas
+            
+            await notifier.enviar_propaganda_activada(partida_id, t_destino.owner_id, atacante_id, t_destino.id, tropas_robadas)
+
+    jugador_estado.tropas_reserva -= (tropas_a_poner + tropas_robadas)
     t_destino.units += tropas_a_poner
+
 
 def resolver_fortificacion(estado_mapa: dict, origen_id: str, destino_id: str, tropas: int):
     estado_mapa[origen_id]["units"] -= tropas
