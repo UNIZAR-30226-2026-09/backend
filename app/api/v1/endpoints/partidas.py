@@ -15,7 +15,7 @@ from app.core.logica_juego.utils import obtener_datos_territorio
 from app.schemas.estado_juego import TerritorioBase
 
 from app.schemas.partida import PartidaCreate, PartidaRead, VotoPausa
-from app.schemas.partida import AccionPausaOut, EmpezarPartidaOut, VerEstadoPartidaOut, UnirseOut, AbandonarOut
+from app.schemas.partida import AccionPausaOut, EmpezarPartidaOut, VerEstadoPartidaOut, PartidaActivaOut, UnirseOut, AbandonarOut
 from app.schemas.partida import FortificarIn
 from app.schemas.partida import AsignarTrabajoIn, AsignarInvestigacionIn, ComprarTecnologiaIn
 from app.models.partida import EstadosPartida, EstadoPartida, FasePartida
@@ -255,6 +255,32 @@ async def empezar_partida(
         "partida_id": partida.id, 
         "turno_de": jugador_turno_1,
         "fase": "refuerzo"
+    }
+
+
+@router.get("/mi-partida", response_model=PartidaActivaOut, status_code=status.HTTP_200_OK)
+async def obtener_mi_partida_activa(
+    usuario_actual: User = Depends(obtener_usuario_actual),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Devuelve la partida activa del jugador autenticado, si existe.
+    Útil para reconectar tras cerrar la app.
+    """
+    entrada = await crud_partidas.obtener_partida_activa_del_jugador(db, usuario_actual.username)
+    if not entrada:
+        raise HTTPException(status_code=404, detail="No tienes ninguna partida activa")
+
+    partida = await crud_partidas.obtener_partida_por_id(db, entrada.partida_id)
+    estado = await crud_partidas.obtener_estado_partida(db, entrada.partida_id)
+
+    return {
+        "partida_id": partida.id,
+        "estado": partida.estado,
+        "codigo_invitacion": partida.codigo_invitacion,
+        "fase_actual": estado.fase_actual if estado else None,
+        "turno_de": estado.user_turno_actual if estado else None,
+        "fin_fase_utc": estado.fin_fase_actual if estado else None,
     }
 
 @router.get("/{partida_id}/estado", response_model=VerEstadoPartidaOut, status_code=status.HTTP_200_OK)
