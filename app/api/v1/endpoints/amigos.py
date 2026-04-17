@@ -66,10 +66,13 @@ async def enviar_solicitud_amistad(
     )
 
     if amistad_in.user_2 in manager.global_connections:
-        await manager.global_connections[amistad_in.user_2].send_json({
-            "tipo_evento": "NUEVA_SOLICITUD_AMISTAD",
-            "de": usuario_actual.username
-        })
+        try:
+            await manager.global_connections[amistad_in.user_2].send_json({
+                "tipo_evento": "NUEVA_SOLICITUD_AMISTAD",
+                "de": usuario_actual.username
+            })
+        except Exception:
+            pass
 
     return nueva_amistad
 
