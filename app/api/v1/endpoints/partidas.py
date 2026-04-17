@@ -138,6 +138,10 @@ async def unirse_partida(
 
     jugadores_actualizados = await crud_partidas.obtener_jugadores_partida(db, partida.id)
     
+    if len(jugadores_actuales) == 0:
+        await crud_partidas.actualizar_creador_partida(db, partida, usuario_actual.username)
+
+
     return UnirseOut(
         mensaje="Unido a la partida",
         jugadores_en_sala=jugadores_actualizados,

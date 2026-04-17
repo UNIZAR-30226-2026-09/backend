@@ -127,28 +127,6 @@ async def procesar_solicitud_amistad(
     
     raise HTTPException(status_code=400, detail="Estado no válido")
 
-# @router.put("/{username_solicitante}/aceptar", response_model=AmistadRead)
-# async def aceptar_amistad(
-#     username_solicitante: str,
-#     usuario_actual: User = Depends(obtener_usuario_actual),
-#     db: AsyncSession = Depends(get_db)
-# ):
-#     # Buscamos la solicitud específica
-#     amistad = await crud_amigos.obtener_solicitud_especifica(
-#         db,
-#         username_solicitante,
-#         usuario_actual.username
-#     )
-
-#     if not amistad:
-#         raise HTTPException(status_code=404, detail="No hay ninguna solicitud pendiente de este usuario")
-
-#     # Aceptamos la solicitud
-#     amistad_aceptada = await crud_amigos.aceptar_solicitud(db, amistad)
-
-#     return amistad_aceptada
-
-
 @router.delete("/{amigo_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def eliminar_amigo(
     amigo_id: int,
