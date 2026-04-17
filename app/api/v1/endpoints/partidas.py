@@ -369,6 +369,10 @@ async def fortificar_tropas(
         raise HTTPException(status_code=400, detail=str(e))
 
     resolver_fortificacion(estado.mapa, datos.origen, datos.destino, datos.tropas)
+    
+    estado.jugadores[usuario_actual.username]["ha_fortificado"] = True
+    flag_modified(estado, "jugadores")
+    
     await crud_combates.guardar_estado_partida(db, estado)
 
     await notifier.enviar_movimiento_conquista(

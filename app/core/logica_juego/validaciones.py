@@ -125,10 +125,14 @@ def validar_fortificacion(
     validar_propiedad_territorio(t_origen, jugador_id, "origen")
     validar_propiedad_territorio(t_destino, jugador_id, "destino")
 
+    if estado_partida.jugadores.get(jugador_id, {}).get("ha_fortificado", False):
+        raise ValueError("Ya has realizado tu movimiento de fortificación este turno.")
+
     validar_camino_aliado(origen_id, destino_id, jugador_id, estado_partida.mapa, grafo_aragon)
 
     validar_tropas(tropas_a_mover, t_origen.units)
     
+
     return True
 
 def validar_fase_gestion(estado_partida, jugador_id: str):

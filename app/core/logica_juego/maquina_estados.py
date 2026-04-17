@@ -157,6 +157,8 @@ async def asignar_tropas_reserva(estado: EstadoPartida, db: AsyncSession) -> int
     Regla: territorios / 3 (mínimo 3).
     """
     jugador_id = estado.user_turno_actual
+    estado.jugadores[jugador_id]["ha_fortificado"] = False
+
     jugador = estado.jugadores.get(jugador_id, {})
 
     motivo_especial = "normal"
