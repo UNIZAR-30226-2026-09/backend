@@ -45,6 +45,7 @@ class AmistadCreate(BaseModel):
     user_2: str
 
 class AmistadRead(BaseModel):
+    id: int
     user_1: str
     user_2: str
     estado: EstadoAmistad

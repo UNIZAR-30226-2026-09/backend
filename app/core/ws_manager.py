@@ -9,6 +9,7 @@ class ConnectionManager:
         # Diccionario para separar a los jugadores por partidas
         # Formato: { id_partida: { username: WebSocket_Object } }
         self.active_connections: Dict[int, Dict[str, WebSocket]] = {}
+        self.global_connections: Dict[str, WebSocket] = {}
 
 
     @staticmethod
@@ -80,5 +81,15 @@ class ConnectionManager:
         if id_partida in self.active_connections:
             for websocket in self.active_connections[id_partida].values():
                 await websocket.send_json(message)
+
+    async def connect_global(self, websocket: WebSocket, username: str):
+        """Conecta al usuario al canal global de presencia."""
+        await websocket.accept()
+        self.global_connections[username] = websocket
+
+    def disconnect_global(self, username: str):
+        """Desconecta al usuario del canal global."""
+        if username in self.global_connections:
+            del self.global_connections[username]
 
 manager = ConnectionManager()

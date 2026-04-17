@@ -172,3 +172,54 @@ async def obtener_lista_amigos(db: AsyncSession, username: str) -> list[Amistad]
     )
     resultado = await db.execute(query)
     return resultado.scalars().all()
+
+# ----------------------------------------------------------------------------
+# 8. RECHAZAR SOLICITUD DE AMISTAD
+# ----------------------------------------------------------------------------
+async def rechazar_solicitud(db: AsyncSession, amistad: Amistad) -> None:
+    """
+    Elimina una solicitud de amistad que estaba PENDIENTE.
+    
+    Args:
+        db: Sesión de base de datos
+        amistad: Objeto Amistad a rechazar
+    """
+    await db.delete(amistad)
+    await db.commit()
+
+# ----------------------------------------------------------------------------
+# 9. ELIMINAR AMIGO
+# ----------------------------------------------------------------------------
+async def eliminar_amigo(db: AsyncSession, amistad: Amistad) -> None:
+    """
+    Elimina una relación de amistad que ya estaba ACEPTADA.
+    
+    Args:
+        db: Sesión de base de datos
+        amistad: Objeto Amistad a eliminar
+    """
+    await db.delete(amistad)
+    await db.commit()
+
+# ----------------------------------------------------------------------------
+# 10. EXTRAER NOMBRES DE AMIGOS (Para WebSockets)
+# ----------------------------------------------------------------------------
+async def obtener_nombres_amigos(db: AsyncSession, username: str) -> list[str]:
+    """
+    Devuelve solo los usernames de los amigos para notificaciones.
+    
+    Args:
+        db: Sesión de base de datos
+        username: Usuario del cual queremos obtener los usernames de sus amigos
+        
+    Returns:
+        Lista de usernames de los amigos
+    """
+    amistades = await obtener_lista_amigos(db, username)
+    nombres_amigos = []
+    
+    for amistad in amistades:
+        amigo = amistad.user_2 if amistad.user_1 == username else amistad.user_1
+        nombres_amigos.append(amigo)
+        
+    return nombres_amigos

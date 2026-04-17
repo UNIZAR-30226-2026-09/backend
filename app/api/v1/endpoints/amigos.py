@@ -1,11 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from app.schemas.usuario import UserRead, AmistadCreate, AmistadRead, AmistadUpdate
-from app.models.usuario import User
+from app.models.usuario import User, Amistad, EstadoAmistad
 from app.api.deps import obtener_usuario_actual
 from app.db.session import get_db
 from app.crud import crud_amigos
+from app.core.ws_manager import manager
 
 router = APIRouter()
 
@@ -63,6 +65,12 @@ async def enviar_solicitud_amistad(
         amistad_in.user_2
     )
 
+    if amistad_in.user_2 in manager.global_connections:
+        await manager.global_connections[amistad_in.user_2].send_json({
+            "tipo_evento": "NUEVA_SOLICITUD_AMISTAD",
+            "de": usuario_actual.username
+        })
+
     return nueva_amistad
 
 @router.get("/solicitudes", response_model=list[AmistadRead])
@@ -98,7 +106,26 @@ async def procesar_solicitud_amistad(
     
     Retorna el objeto de amistad actualizado con el nuevo estado.
     """
-    raise HTTPException(status_code=501, detail="No implementado")
+
+    query = select(Amistad).where(Amistad.id == solicitud_id)
+    result = await db.execute(query)
+    solicitud = result.scalar_one_or_none()
+
+    if not solicitud:
+        raise HTTPException(status_code=404, detail="Solicitud no encontrada")
+
+    if solicitud.user_2 != usuario_actual.username:
+        raise HTTPException(status_code=403, detail="No tienes permiso para procesar esta solicitud")
+
+    if estado_in.estado == EstadoAmistad.ACEPTADA:
+        return await crud_amigos.aceptar_solicitud(db, solicitud)
+    
+    elif estado_in.estado == EstadoAmistad.RECHAZADA:
+        await crud_amigos.rechazar_solicitud(db, solicitud)
+        return solicitud
+    
+    raise HTTPException(status_code=400, detail="Estado no válido")
+
 
 # @router.put("/{username_solicitante}/aceptar", response_model=AmistadRead)
 # async def aceptar_amistad(
@@ -137,4 +164,15 @@ async def eliminar_amigo(
     
     Retorna un código de estado 204 indicando que la eliminación fue exitosa (sin contenido).
     """
-    raise HTTPException(status_code=501, detail="No implementado")
+    query = select(Amistad).where(Amistad.id == amigo_id)
+    result = await db.execute(query)
+    amistad = result.scalar_one_or_none()
+
+    if not amistad:
+        raise HTTPException(status_code=404, detail="Amigo no encontrado")
+
+    if usuario_actual.username not in [amistad.user_1, amistad.user_2]:
+        raise HTTPException(status_code=403, detail="No tienes permiso para eliminar esta amistad")
+
+    await crud_amigos.eliminar_amigo(db, amistad)
+    return None
