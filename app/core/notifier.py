@@ -62,15 +62,19 @@ class GameNotifier:
             "jugador": jugador_id
         }, partida_id)
 
-    async def enviar_ataque_especial(partida_id: int, atacante_id: str, tipo_ataque: str, origen_id: str, destino_id: str):
-
-        await manager.broadcast({
+    @staticmethod
+    async def enviar_ataque_especial(partida_id: int, atacante_id: str, tipo_ataque: str, origen_id: str, destino_id: str, resultado=None):
+        payload = {
             "tipo_evento": "ataque_especial",
             "atacante": atacante_id,
             "tipo": tipo_ataque,
             "origen": origen_id,
             "destino": destino_id
-        }, partida_id)
+        }
+        if resultado is not None:
+            payload["resultado"] = resultado
+
+        await manager.broadcast(payload, partida_id)
 
     @staticmethod
     async def enviar_tropas_colocadas(partida_id: int, jugador_id: str, territorio_id: str, añadidos: int, totales: int):
@@ -80,6 +84,18 @@ class GameNotifier:
             "territorio": territorio_id,
             "tropas_añadidas": añadidos,
             "tropas_totales_ahora": totales
+        }, partida_id)
+
+
+    @staticmethod
+    async def enviar_cambio_fase(partida_id: int, nueva_fase: str, jugador_activo: str, tropas_recibidas: int, motivo_refuerzos: str, fin_fase_utc: str):
+        await manager.broadcast({
+            "tipo_evento": "CAMBIO_FASE",
+            "nueva_fase": nueva_fase,
+            "jugador_activo": jugador_activo,
+            "tropas_recibidas": tropas_recibidas,
+            "motivo_refuerzos": motivo_refuerzos,
+            "fin_fase_utc": fin_fase_utc
         }, partida_id)
 
     @staticmethod
@@ -146,15 +162,14 @@ class GameNotifier:
 
 
     @staticmethod
-    async def enviar_propaganda_activada(partida_id: int, victima_id: str, atacante_id: str, territorio_id: str, cantidad: int):
+    async def enviar_propaganda_activada(partida_id: int, victima_id: str, beneficiario_id: str, cantidad: int):
 
         await manager.broadcast({
             "tipo_evento": "PROPAGANDA_ACTIVADA",
             "victima_id": victima_id,
-            "atacante_id": atacante_id,
-            "territorio_id": territorio_id,
+            "beneficiario": beneficiario_id,
             "cantidad_robada": cantidad,
-            "mensaje": f"¡Propaganda en {territorio_id}! {atacante_id} ha interceptado {cantidad} tropas de {victima_id}."
+            "mensaje": f"¡Propaganda! {beneficiario_id} ha interceptado {cantidad} tropas de {victima_id}."
         }, partida_id)
 
     @staticmethod

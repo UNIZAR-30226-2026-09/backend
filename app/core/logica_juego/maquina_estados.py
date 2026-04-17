@@ -16,7 +16,8 @@ from app.core.logica_juego.utils import obtener_territorios_jugador
 from app.core.logica_juego.constantes import ARBOL_TECNOLOGICO
 
 from app.core.logica_juego.config_ataques_especiales import TipoAtaque, TipoEfecto
-from app.core.logica_juego.efectos_persistentes import procesar_efectos_fin_de_turno
+from app.core.logica_juego.ataques_especiales import calcular_refuerzos_academia, calcular_robo_propaganda
+from app.core.logica_juego.efectos_persistentes import procesar_efectos_fin_de_turno, procesar_efectos_inicio_turno
 
 from app.core.notifier import notifier
 # Guarda las tareas para que Python no las borre por error
@@ -63,10 +64,12 @@ async def avanzar_fase(
 
         estado.user_turno_actual = await calcular_siguiente_jugador(partida_id, estado.user_turno_actual, db)
 
+        await procesar_efectos_inicio_turno(estado, estado.user_turno_actual)  
+
         await asignar_tropas_reserva(estado, db)
     
     elif nueva_fase == FasePartida.GESTION:
-        # Se resuelve para el jugador que tiene el turno actualmente
+        # Se re suelve para el jugador que tiene el turno actualmente
         await resolver_gestion_ronda(estado, estado.user_turno_actual)
     
     
@@ -163,6 +166,17 @@ async def asignar_tropas_reserva(estado: EstadoPartida, db: AsyncSession) -> int
     if any(e.get("tipo_efecto") == TipoEfecto.SANCIONES for e in efectos_jugador):
         motivo_especial = "sancion"
         await actualizar_tropas_reserva(db, estado, jugador_id, 0)
+        
+        await notifier.enviar_cambio_fase(
+            partida_id=estado.partida_id,
+            nueva_fase=FasePartida.REFUERZO.value,
+            jugador_activo=jugador_id,
+            tropas_recibidas=0,
+            motivo_refuerzos="sancion",
+            fin_fase_utc=estado.fin_fase_actual.isoformat()
+        )
+
+
         return 0
 
 
@@ -174,18 +188,33 @@ async def asignar_tropas_reserva(estado: EstadoPartida, db: AsyncSession) -> int
     # Si tengo ACADEMIA_MILITAR, se me multiplican las tropas.
     if TipoAtaque.ACADEMIA_MILITAR in jugador.get("tecnologias_compradas", []):
         motivo_especial = "academia"
-        tropas_recibidas = math.ceil(tropas_recibidas * 1.5)
+        tropas_recibidas = calcular_refuerzos_academia(tropas_recibidas)
 
-    await actualizar_tropas_reserva(db, estado, estado.user_turno_actual, tropas_recibidas)
+    tropas_recibidas, beneficiario_id, robadas = calcular_robo_propaganda(jugador, tropas_recibidas)
+
+    if robadas > 0:
+        motivo_especial = "propaganda"
+
+        if beneficiario_id in estado.jugadores:
+            estado.jugadores[beneficiario_id]["tropas_reserva"] += robadas
+            await actualizar_tropas_reserva(db, estado, beneficiario_id, estado.jugadores[beneficiario_id]["tropas_reserva"])
+        
+            await notifier.enviar_propaganda_activada(
+                partida_id=estado.partida_id,
+                victima_id=jugador_id,
+                beneficiario_id=beneficiario_id,
+                cantidad=robadas
+            )
     
-    await manager.broadcast({
-            "tipo_evento": "CAMBIO_FASE",
-            "nueva_fase": FasePartida.REFUERZO.value,
-            "jugador_activo": jugador_id,
-            "tropas_recibidas": tropas_recibidas,
-            "motivo_refuerzos": motivo_especial,
-            "fin_fase_utc": estado.fin_fase_actual.isoformat()
-        }, estado.partida_id)
+    await actualizar_tropas_reserva(db, estado, jugador_id, tropas_recibidas)
+    
+    await notifier.enviar_cambio_fase(
+        partida_id=estado.partida_id,
+        nueva_fase=FasePartida.REFUERZO.value,
+        jugador_activo=jugador_id,
+        tropas_recibidas=tropas_recibidas,
+        motivo_refuerzos=motivo_especial,
+    )
 
 def territorio_esta_fatigado(territorio_data: dict) -> bool:
     """

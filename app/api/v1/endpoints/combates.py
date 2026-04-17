@@ -296,7 +296,7 @@ async def ejecutar_ataque_especial(
 
     try:
         # Ejecutamos el ataque
-        funcion_ataque(estado_partida, atacante_id, ataque_in.origen, ataque_in.destino)
+        resultado_accion = funcion_ataque(estado_partida, atacante_id, ataque_in.origen, ataque_in.destino)
     except ValueError as e:
         raise HTTPException(400, str(e))
 
@@ -311,7 +311,8 @@ async def ejecutar_ataque_especial(
         atacante_id=atacante_id, 
         tipo_ataque=ataque_in.tipo_ataque, 
         origen_id=ataque_in.origen, 
-        destino_id=ataque_in.destino
+        destino_id=ataque_in.destino,
+        resultado=resultado_accion
     )
 
     return AtaqueEspecialOut(

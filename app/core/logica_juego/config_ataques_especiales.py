@@ -46,11 +46,11 @@ CONFIG_ATAQUES = {
     },
     TipoAtaque.CABEZA_NUCLEAR: {
         "rango": 3,
-        "dano_porcentaje": 0.70
+        "dano_fijo": 10
     },
     TipoAtaque.BOMBA_RACIMO: {
         "rango": 3,
-        "dano_objetivo": 0.50,
+        "dano_fijo_objetivo": 10,
         "dano_colindantes": 0.30
     },
 
@@ -65,6 +65,7 @@ CONFIG_ATAQUES = {
     TipoAtaque.CORONAVIRUS: {
         "rango": 1,
         "dano_inicial": 0.40,
+        "dano_recurrente": 0.10,
         "rondas_duracion": 2,
         "probabilidad_expansion": 0.25
     },
@@ -87,7 +88,6 @@ CONFIG_ATAQUES = {
         "duracion": 1
     },
     TipoAtaque.PROPAGANDA_SUBVERSIVA: {
-        "rango": 2,
         "duracion": 2,
         "robo_porcentaje": 0.50
     },
