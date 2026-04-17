@@ -89,10 +89,10 @@ Para establecer la conexión, el cliente debe abrir un socket hacia la siguiente
         "jugador_activo": "jugador_1",
         "fin_fase_utc": "2026-03-22T15:30:00Z",
         "tropas_recibidas": 5,
-        "motivo_refuerzos": "ACADEMIA_MILITAR" 
+        "motivo_refuerzos": "normal"
     }
     ```
-* **Nota:** `motivo_refuerzos` puede ser "NORMAL", "ACADEMIA_MILITAR" o "SANCION_INTERNACIONAL" (0 tropas).*
+* **Nota:** `motivo_refuerzos` puede ser `"normal"`, `"academia"`, `"sancion"` (0 tropas) o `"propaganda"` (tropas reducidas por robo).
 
 ### 3.2. Inicio de Partida
 * **Dirección:** Servidor -> Todos los Clientes (Broadcast)
@@ -101,7 +101,7 @@ Para establecer la conexión, el cliente debe abrir un socket hacia la siguiente
     ```json
     {
         "tipo_evento": "PARTIDA_INICIADA",
-        "mapa": { "Huesca": { "owner_id": "jugador_1", "units": 0 }, ... },
+        "mapa": { "Huesca": { "owner_id": "jugador_1", "units": 0 }, "...": "..." },
         "jugadores": {
             "jugador_1": { "numero_jugador": 1 },
             "jugador_2": { "numero_jugador": 2 }
@@ -114,13 +114,13 @@ Para establecer la conexión, el cliente debe abrir un socket hacia la siguiente
 
 ### 3.3. Sincronización de Reconexión
 * **Dirección:** Servidor -> Cliente (Unicast)
-* **Descripción:** Se transmite exclusivamente al cliente que acaba de abrir el WebSocket **si la partida ya había empezado**. Permite al Frontend en una reconexión.
+* **Descripción:** Se transmite exclusivamente al cliente que acaba de abrir el WebSocket **si la partida ya había empezado**. Permite al Frontend sincronizarse tras una reconexión.
 * **Payload recibido:**
     ```json
     {
         "tipo_evento": "ACTUALIZACION_MAPA",
-        "mapa": { "Huesca": { "owner_id": "jugador_1", "units": 5 }, ... },
-        "jugadores": { "jugador_1": { "tropas_reserva": 0 }, ... },
+        "mapa": { "Huesca": { "owner_id": "jugador_1", "units": 5 }, "...": "..." },
+        "jugadores": { "jugador_1": { "tropas_reserva": 0 }, "...": "..." },
         "turno_de": "jugador_2",
         "fase_actual": "ataque",
         "fin_fase_utc": "2026-03-22T15:35:00Z"
@@ -141,9 +141,8 @@ Para establecer la conexión, el cliente debe abrir un socket hacia la siguiente
 
 ### 3.5. Notificación de Nuevo Jugador
 * **Dirección:** Servidor -> Todos los Clientes (Broadcast)
-* **Descripción:** Se emite cuando un nuevo usuario se une a la sala (vía HTTP). Permite a los que ya están en el lobby actualizar su lista de amigos.
+* **Descripción:** Se emite cuando un nuevo usuario se une a la sala (vía HTTP). Permite a los que ya están en el lobby actualizar su lista de jugadores.
 * **Payload recibido:**
-
     ```json
     {
         "tipo_evento": "NUEVO_JUGADOR",
@@ -161,6 +160,7 @@ Para establecer la conexión, el cliente debe abrir un socket hacia la siguiente
         "error": "Formato incorrecto. Falta el campo 'accion'."
     }
     ```
+
 ---
 
 ## 4. SISTEMA DE PRESENCIA Y AMIGOS (Canal Global)
@@ -176,9 +176,10 @@ Para recibir notificaciones sociales fuera de una partida, el cliente debe abrir
     {
         "tipo_evento": "PRESENCIA",
         "username": "nombre_del_amigo",
-        "estado": "online" // "offline"
+        "estado": "online"
     }
     ```
+* **Nota:** `estado` puede ser `"online"` u `"offline"`.
 
 ### 4.2. Notificación de Solicitud de Amistad
 * **Dirección:** Servidor -> Cliente (Personalizado)
@@ -189,36 +190,47 @@ Para recibir notificaciones sociales fuera de una partida, el cliente debe abrir
         "tipo_evento": "NUEVA_SOLICITUD_AMISTAD",
         "de": "nombre_del_solicitante"
     }
- 
+    ```
+
+---
+
 ## 5. GUERRA TECNOLÓGICA (ATAQUES ESPECIALES)
 
 ### 5.1. Notificación de Ataque Especial
 * **Dirección:** Servidor -> Todos los Clientes (Broadcast)
-* **Descripción:** Se emite inmediatamente cuando un jugador lanza un poder (misiles, virus, etc.).
+* **Descripción:** Se emite inmediatamente cuando un jugador lanza un poder (misiles, virus, etc.). El campo `resultado` está presente solo si el ataque produce efectos inmediatos. Su estructura varía según el tipo de ataque — consultar los docs individuales en `docs/habilidades/`.
+* **Payload recibido:**
     ```json
     {
-        "tipo_evento": "ATAQUE_ESPECIAL",
+        "tipo_evento": "ataque_especial",
         "atacante": "jugador_1",
-        "tipo_ataque": "MISIL_NUCLEAR",
+        "tipo": "misil_crucero",
         "origen": "Huesca",
-        "destino": "Barbastro"
+        "destino": "Barbastro",
+        "resultado": {
+            "afectados": [
+                { "territorio_id": "Barbastro", "bajas": 4 }
+            ]
+        }
     }
     ```
+* **Nota:** `resultado` es `null` o está ausente para habilidades sin efecto inmediato reportable.
 
 ### 5.2. Actualización de Territorio (Efectos Persistentes)
 * **Dirección:** Servidor -> Todos los Clientes (Broadcast)
-* **Descripción:** Evento crítico enviado cuando un territorio cambia debido a efectos que perduran (ej. bajas automáticas por Gripe Aviar o expansión de patógenos).
+* **Descripción:** Evento crítico enviado cuando un territorio cambia debido a efectos persistentes (bajas por enfermedad, expansión de virus, expiración de efectos, etc.).
+* **Payload recibido:**
     ```json
     {
         "tipo_evento": "TERRITORIO_ACTUALIZADO",
-        "nombre_territorio": "Barbastro",
-        "territorio": {
+        "territorio_id": "Barbastro",
+        "detalles": {
             "owner_id": "jugador_2",
             "units": 8,
-            "estado_bloqueo": "CONGELADO",
+            "estado_bloqueo": null,
             "efectos": [
                 {
-                    "tipo_efecto": "GRIPE_AVIAR",
+                    "tipo_efecto": "gripe_aviar",
                     "duracion_restante": 2,
                     "origen_jugador_id": "jugador_1"
                 }
@@ -233,70 +245,87 @@ Para recibir notificaciones sociales fuera de una partida, el cliente debe abrir
 
 ### 6.1. Investigación Completada
 * **Dirección:** Servidor -> Todos los Clientes (Broadcast)
+* **Descripción:** Notifica que una investigación ha concluido y se han desbloqueado nuevas tecnologías para comprar.
+* **Payload recibido:**
     ```json
     {
         "tipo_evento": "INVESTIGACION_COMPLETADA",
-        "jugador": "jugador_1",
-        "territorio": "Huesca",
-        "nuevas_tecnologias": ["coronavirus", "fatiga"]
+        "usuario_id": "jugador_1",
+        "rama": "biologica",
+        "nivel": 2,
+        "territorio_id": "Huesca",
+        "nuevas_tecnologias": ["coronavirus", "fatiga"],
+        "mensaje": "Investigación en biologica (Nivel 2) completada en Huesca."
     }
     ```
 
 ### 6.2. Trabajo Completado (Economía)
 * **Dirección:** Servidor -> Todos los Clientes (Broadcast)
+* **Descripción:** Notifica que un territorio ha terminado su ciclo de producción y el jugador ha recibido monedas.
+* **Payload recibido:**
     ```json
     {
         "tipo_evento": "TRABAJO_COMPLETADO",
-        "jugador": "jugador_1",
-        "monedas_ganadas": 15,
-        "total_monedas": 45
+        "usuario_id": "jugador_1",
+        "territorio_id": "Huesca",
+        "ganancia": 1500,
+        "mensaje": "Producción en Huesca finalizada. ¡+ 1500 monedas!"
     }
     ```
 
 ### 6.3. Evento de Fatiga
 * **Dirección:** Servidor -> Todos los Clientes (Broadcast)
-* **Descripción:** Notifica que una acción de producción o investigación ha sido bloqueada este turno por un efecto de fatiga enemigo.
+* **Descripción:** Notifica que una acción de producción o investigación no ha avanzado este turno porque el territorio está bajo el efecto de Fatiga.
+* **Payload recibido:**
     ```json
     {
         "tipo_evento": "EVENTO_FATIGA",
-        "jugador": "jugador_1",
-        "territorio": "Teruel",
-        "mensaje": "La producción se ha detenido por fatiga laboral enemiga."
+        "usuario_id": "jugador_1",
+        "territorio_id": "Teruel",
+        "accion_bloqueada": "trabajando",
+        "mensaje": "Las tropas en Teruel están demasiado cansadas para terminar de trabajando."
     }
     ```
+* **Nota:** `accion_bloqueada` puede ser `"trabajando"` o `"investigando"`.
 
 ### 6.4. Propaganda Activada
 * **Dirección:** Servidor -> Todos los Clientes (Broadcast)
-* **Descripción:** Se dispara al intentar colocar tropas en un territorio infectado por propaganda enemiga, informando del robo de unidades.
+* **Descripción:** Se emite al inicio del turno de refuerzo de la víctima cuando la Propaganda Subversiva activa su robo de tropas.
+* **Payload recibido:**
     ```json
     {
         "tipo_evento": "PROPAGANDA_ACTIVADA",
-        "victima": "jugador_1",
+        "victima_id": "jugador_1",
         "beneficiario": "jugador_2",
-        "tropas_robadas": 2
+        "cantidad_robada": 3,
+        "mensaje": "¡Propaganda! jugador_2 ha interceptado 3 tropas de jugador_1."
     }
     ```
 
+---
+
 ## 7. FINALIZACIÓN Y ELIMINACIÓN
+
 ### 7.1. Jugador Eliminado
 * **Dirección:** Servidor -> Todos los Clientes (Broadcast)
 * **Descripción:** Se emite cuando un jugador pierde todos sus territorios y es expulsado de la partida.
+* **Payload recibido:**
     ```json
     {
         "tipo_evento": "JUGADOR_ELIMINADO",
-        "jugador": "jugador_3"
+        "username": "jugador_3",
+        "mensaje": "¡jugador_3 ha sido borrado del mapa!"
     }
     ```
 
 ### 7.2. Partida Finalizada
 * **Dirección:** Servidor -> Todos los Clientes (Broadcast)
 * **Descripción:** Evento de cierre que identifica al ganador absoluto de la partida.
+* **Payload recibido:**
     ```json
     {
         "tipo_evento": "PARTIDA_FINALIZADA",
-        "ganador": "jugador_1"
+        "ganador": "jugador_1",
+        "mensaje": "La partida ha terminado. jugador_1 ha conquistado todos los territorios."
     }
     ```
-
-## 7. EVENTOS PENDIENTES DE DOCUMENTAR
-Hay eventos pendientes de documentar en limpio!
