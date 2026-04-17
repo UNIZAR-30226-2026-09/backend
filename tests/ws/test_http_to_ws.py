@@ -38,6 +38,11 @@ def test_empezar_partida_emite_partida_iniciada(client, monkeypatch):
 
     monkeypatch.setattr(manager, "broadcast", spy_broadcast)
 
+    async def mock_enviar_cambio_fase(*args, **kwargs):
+        pass
+
+    monkeypatch.setattr("app.core.notifier.notifier.enviar_cambio_fase", mock_enviar_cambio_fase)
+
     # 1. Registro y login creador
     res_reg_1 = client.post("/api/v1/usuarios/registro", json={
         "username": "creador_ws", "email": "creador_ws@test.com", "password": "password_segura_123"

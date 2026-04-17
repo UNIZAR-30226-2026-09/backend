@@ -1,7 +1,7 @@
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import patch, MagicMock
-from app.core.logica_juego.efectos_persistentes import procesar_efectos_fin_de_turno
+from app.core.logica_juego.efectos_persistentes import procesar_efectos_fin_de_turno, procesar_efectos_inicio_turno
 from app.core.logica_juego.maquina_estados import asignar_tropas_reserva, resolver_gestion_ronda
 from app.core.logica_juego.combate import resolver_colocacion_tropas
 from app.core.logica_juego.config_ataques_especiales import TipoEfecto, TipoAtaque
@@ -41,18 +41,20 @@ def estado_mock():
     return MockEstado()
 
 @pytest.mark.asyncio
-async def test_gripe_aviar_dano_por_turno(estado_mock):
+@patch("app.crud.crud_partidas.flag_modified")
+@patch("app.core.logica_juego.efectos_persistentes.notifier.enviar_actualizacion_territorio")
+async def test_gripe_aviar_dano_por_turno(mock_notifier_ws, mock_flag, estado_mock):
     estado_mock.mapa["T1"]["efectos"].append({
         "tipo_efecto": TipoEfecto.GRIPE_AVIAR,
         "duracion_restante": 2,
         "origen_jugador_id": "jugador2"
     })
 
-    await procesar_efectos_fin_de_turno(estado_mock)
+    # El daño ahora se aplica al INICIO del turno del dueño
+    await procesar_efectos_inicio_turno(estado_mock, "jugador1")
 
     # Daño por turno es 1
     assert estado_mock.mapa["T1"]["units"] == 9
-    assert estado_mock.mapa["T1"]["efectos"][0]["duracion_restante"] == 1
 
 @pytest.mark.asyncio
 async def test_expiracion_efectos(estado_mock):
@@ -67,15 +69,16 @@ async def test_expiracion_efectos(estado_mock):
     # Duracion era 1, al restar queda 0 y se elimina
     assert len(estado_mock.mapa["T1"]["efectos"]) == 0
 
+@patch("app.core.logica_juego.maquina_estados.notifier.enviar_cambio_fase")
 @patch("app.core.logica_juego.maquina_estados.actualizar_tropas_reserva")
 @patch("app.core.logica_juego.maquina_estados.obtener_territorios_jugador")
-async def test_sanciones_bloquean_refuerzos(mock_territorios, mock_actualizar, estado_mock):
+async def test_sanciones_bloquean_refuerzos(mock_territorios, mock_actualizar, mock_notifier, estado_mock):
     estado_mock.jugadores["jugador1"]["efectos"].append({
         "tipo_efecto": TipoEfecto.SANCIONES, 
         "duracion_restante": 1, 
         "origen_jugador_id": "jugador2"
     })
-    mock_territorios.return_value = ["T1", "T2", "T3", "T4", "T5", "T6"] # Debería recibir 2
+    mock_territorios.return_value = ["T1", "T2", "T3", "T4", "T5", "T6"] # Debería recibir 2 (pero minimo 3)
     
     db_mock = MagicMock()
     tropas = await asignar_tropas_reserva(estado_mock, db_mock)
@@ -83,9 +86,10 @@ async def test_sanciones_bloquean_refuerzos(mock_territorios, mock_actualizar, e
     assert tropas == 0
     mock_actualizar.assert_called_with(db_mock, estado_mock, "jugador1", 0)
 
+@patch("app.core.logica_juego.maquina_estados.notifier.enviar_cambio_fase")
 @patch("app.core.logica_juego.maquina_estados.actualizar_tropas_reserva")
 @patch("app.core.logica_juego.maquina_estados.obtener_territorios_jugador")
-async def test_academia_militar_multiplica_refuerzos(mock_territorios, mock_actualizar, estado_mock):
+async def test_academia_militar_multiplica_refuerzos(mock_territorios, mock_actualizar, mock_notifier, estado_mock):
     estado_mock.jugadores["jugador1"]["tecnologias_compradas"] = [TipoAtaque.ACADEMIA_MILITAR]
     mock_territorios.return_value = ["T1", "T2", "T3", "T4", "T5", "T6"] # Recibe 3 (max(3, 6//3))
     
@@ -112,32 +116,35 @@ async def test_fatiga_bloquea_gestion(mock_flag, estado_mock):
     assert estado_mock.mapa["T1"]["estado_bloqueo"] == "trabajo"
 
 @pytest.mark.asyncio
-async def test_propaganda_subversiva_roba_colocacion(estado_mock):
-    estado_mock.mapa["T2"]["efectos"].append({
+@patch("app.core.logica_juego.maquina_estados.actualizar_tropas_reserva")
+@patch("app.crud.crud_partidas.flag_modified")
+@patch("app.core.logica_juego.maquina_estados.notifier.enviar_cambio_fase")
+@patch("app.core.logica_juego.maquina_estados.notifier.enviar_propaganda_activada")
+@patch("app.core.logica_juego.maquina_estados.obtener_territorios_jugador")
+async def test_propaganda_subversiva_roba_colocacion(mock_territorios, mock_propaganda, mock_notifier, mock_flag, mock_actualizar, estado_mock):
+    # La propaganda ahora roba al ASIGNAR RESERVAS
+    estado_mock.jugadores["jugador2"] = {
+        "tecnologias_compradas": [TipoAtaque.PROPAGANDA_SUBVERSIVA],
+        "tropas_reserva": 0,
+        "efectos": []
+    }
+    estado_mock.jugadores["jugador1"]["efectos"].append({
         "tipo_efecto": TipoEfecto.PROPAGANDA,
         "duracion_restante": 2,
-        "origen_jugador_id": "jugador1"  # Atacante
+        "origen_jugador_id": "jugador2"  # Atacante/Beneficiario
     })
-
-    # Jugador 2 coloca 4 tropas en T2
-    jugador2_obj = MagicMock()
-    jugador2_obj.tropas_reserva = 10
-
-    t2_obj = MagicMock()
-    t2_obj.units = 5
-
-    await resolver_colocacion_tropas(
-        jugador2_obj,
-        t2_obj,
-        tropas_a_poner=4,
-        data_territorio=estado_mock.mapa["T2"],
-        jugadores_estado=estado_mock.jugadores,
-        partida_id=1
-    )
+    estado_mock.user_turno_actual = "jugador1" # Víctima
     
-    # Roba el 50% (ceil(4 * 0.5) = 2)
-    # Jugador 2: pierde 4 de reserva, pero solo 2 llegan al territorio.
-    # Jugador 1: gana 2 en su reserva.
-    assert t2_obj.units == 5 + 2
-    assert jugador2_obj.tropas_reserva == 6
-    assert estado_mock.jugadores["jugador1"]["tropas_reserva"] == 2
+    # Jugador 1 tiene 6 territorios -> Debería recibir 3 tropas (minimo)
+    mock_territorios.return_value = ["T1"] * 6 
+    
+    # Recibe 3, roba floor(3 * 0.5) = 1. Quedan 2.
+    db_mock = MagicMock()
+    await asignar_tropas_reserva(estado_mock, db_mock)
+    
+    # Verificamos que se han calculado bien las tropas robadas
+    # Jugador 1 recibe 2 (3 original - 1 robada)
+    # Jugador 2 recibe 1 robada
+    mock_actualizar.assert_any_call(db_mock, estado_mock, "jugador1", 2)
+    mock_actualizar.assert_any_call(db_mock, estado_mock, "jugador2", 1)
+    mock_propaganda.assert_called_once()

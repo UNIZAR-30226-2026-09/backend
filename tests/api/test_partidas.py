@@ -149,7 +149,10 @@ def _ver_estado(client, partida_id: int) -> dict:
 # Tests: numero_jugador y orden de turno aleatorio
 # ---------------------------------------------------------------------------
 
-def test_primer_turno_corresponde_a_jugador_con_numero_1(client):
+def test_primer_turno_corresponde_a_jugador_con_numero_1(client, monkeypatch):
+    async def mock_enviar_cambio_fase(*args, **kwargs): pass
+    monkeypatch.setattr("app.core.notifier.notifier.enviar_cambio_fase", mock_enviar_cambio_fase)
+
     headers_c = _registrar_y_login(client, "creador")
     headers_j2 = _registrar_y_login(client, "jugador2")
 
@@ -166,7 +169,10 @@ def test_primer_turno_corresponde_a_jugador_con_numero_1(client):
     assert jugadores[turno_de]["numero_jugador"] == 1
 
 
-def test_numeros_jugador_son_unicos_y_en_rango(client):
+def test_numeros_jugador_son_unicos_y_en_rango(client, monkeypatch):
+    async def mock_enviar_cambio_fase(*args, **kwargs): pass
+    monkeypatch.setattr("app.core.notifier.notifier.enviar_cambio_fase", mock_enviar_cambio_fase)
+
     headers_c = _registrar_y_login(client, "creador")
     headers_j2 = _registrar_y_login(client, "jugador2")
     headers_j3 = _registrar_y_login(client, "jugador3")
@@ -182,7 +188,10 @@ def test_numeros_jugador_son_unicos_y_en_rango(client):
     assert sorted(numeros) == list(range(1, len(numeros) + 1))
 
 
-def test_jugador_1_recibe_tropas_al_empezar(client):
+def test_jugador_1_recibe_tropas_al_empezar(client, monkeypatch):
+    async def mock_enviar_cambio_fase(*args, **kwargs): pass
+    monkeypatch.setattr("app.core.notifier.notifier.enviar_cambio_fase", mock_enviar_cambio_fase)
+
     headers_c = _registrar_y_login(client, "creador")
     headers_j2 = _registrar_y_login(client, "jugador2")
 

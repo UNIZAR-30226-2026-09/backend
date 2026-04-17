@@ -52,11 +52,11 @@ def test_bomba_racimo_area(mock_vecinos, mock_dist, estado_mock):
     mock_dist.return_value = 1
     mock_vecinos.return_value = ["T3"]
     
-    # T2: 10 units -> -50% = 5
+    # T2: 10 units -> Daño fijo 10 = 0
     # T3: 20 units -> -30% = 14
     ejecutar_bomba_racimo(estado_mock, "jugador1", "T1", "T2")
     
-    assert estado_mock.mapa["T2"]["units"] == 5
+    assert estado_mock.mapa["T2"]["units"] == 0
     assert estado_mock.mapa["T3"]["units"] == 14
 
 def test_vacuna_universal_limpia_enfermedades(estado_mock):

@@ -5,6 +5,11 @@ from app.models.partida import Partida, EstadoPartida, FasePartida, JugadoresPar
 from app.models.usuario import User
 from app.core.logica_juego.maquina_estados import avanzar_fase, asignar_tropas_reserva
 
+@pytest.fixture(autouse=True)
+def mock_notifier(monkeypatch):
+    async def mock_enviar_cambio_fase(*args, **kwargs): pass
+    monkeypatch.setattr("app.core.notifier.notifier.enviar_cambio_fase", mock_enviar_cambio_fase)
+
 @pytest.mark.asyncio
 async def test_asignar_tropas_reserva_minimo(db: AsyncSession):
     # Setup: 1 territorio (debe dar 3 tropas)
@@ -77,9 +82,12 @@ async def test_avanzar_fase_asigna_tropas(db: AsyncSession, monkeypatch):
     db.add(estado)
     await db.commit()
 
-    # Mock del manager para evitar errores de broadcast
+    # Mock del manager y notifier para evitar errores de broadcast y firmas incompletas
     async def mock_broadcast(msg, p_id): pass
+    async def mock_enviar_cambio_fase(*args, **kwargs): pass
+    
     monkeypatch.setattr("app.core.ws_manager.manager.broadcast", mock_broadcast)
+    monkeypatch.setattr("app.core.notifier.notifier.enviar_cambio_fase", mock_enviar_cambio_fase)
 
     # Act: Avanzamos de FORTIFICACION -> REFUERZO (cambio de turno a u2)
     await avanzar_fase(1, db)

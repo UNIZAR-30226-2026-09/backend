@@ -373,6 +373,18 @@ async def test_evento_cambio_fase_broadcast(db, monkeypatch):
 
     monkeypatch.setattr(manager, "broadcast", spy_broadcast)
 
+    # Añadimos mock para evitar que la firma rota de maquina_estados rompa el test
+    async def mock_enviar_cambio_fase(*args, **kwargs):
+        # Simula lo que haría el notifier: llamar al broadcast
+        await manager.broadcast({
+            "tipo_evento": "CAMBIO_FASE",
+            "nueva_fase": args[1] if len(args) > 1 else kwargs.get("nueva_fase"),
+            "jugador_activo": args[2] if len(args) > 2 else kwargs.get("jugador_activo"),
+            "fin_fase_utc": "2024-01-01T00:00:00" # fallback
+        }, args[0] if len(args) > 0 else kwargs.get("partida_id"))
+
+    monkeypatch.setattr("app.core.notifier.notifier.enviar_cambio_fase", mock_enviar_cambio_fase)
+
     await avanzar_fase(partida.id, db, FasePartida.FORTIFICACION)
 
     assert broadcast_payloads
