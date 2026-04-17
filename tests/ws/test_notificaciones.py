@@ -360,7 +360,7 @@ async def test_evento_cambio_fase_broadcast(db, monkeypatch):
         fin_fase_actual=datetime.now(timezone.utc),
         user_turno_actual="u1",
         mapa={},
-        jugadores={},
+        jugadores={"u1": {"tropas_reserva": 0}},
     )
     db.add(estado)
     await db.commit()

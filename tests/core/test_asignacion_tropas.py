@@ -20,9 +20,9 @@ async def test_asignar_tropas_reserva_minimo(db: AsyncSession):
         fin_fase_actual=datetime.now(timezone.utc),
         user_turno_actual="user1",
         mapa=mapa,
-        jugadores={}
+        jugadores={"user1": {"tropas_reserva": 0}}
     )
-    
+
     await asignar_tropas_reserva(estado, db)
 
     assert estado.jugadores["user1"]["tropas_reserva"] == 3
@@ -77,7 +77,7 @@ async def test_avanzar_fase_asigna_tropas(db: AsyncSession, monkeypatch):
         fin_fase_actual=datetime.now(timezone.utc),
         user_turno_actual="u1", # Turno de u1 terminando
         mapa=mapa,
-        jugadores={}
+        jugadores={"u1": {"tropas_reserva": 0}, "u2": {"tropas_reserva": 0}}
     )
     db.add(estado)
     await db.commit()
