@@ -38,6 +38,11 @@ def test_empezar_partida_emite_partida_iniciada(client, monkeypatch):
 
     monkeypatch.setattr(manager, "broadcast", spy_broadcast)
 
+    async def mock_enviar_cambio_fase(*args, **kwargs):
+        pass
+
+    monkeypatch.setattr("app.core.notifier.notifier.enviar_cambio_fase", mock_enviar_cambio_fase)
+
     # 1. Registro y login creador
     res_reg_1 = client.post("/api/v1/usuarios/registro", json={
         "username": "creador_ws", "email": "creador_ws@test.com", "password": "password_segura_123"
@@ -273,7 +278,7 @@ async def test_http_colocar_tropas_emite_ws(monkeypatch):
     def fake_validar_colocacion_tropas(*args, **kwargs):
         return None
 
-    def fake_resolver_colocacion_tropas(jugador_estado, t_destino, tropas):
+    async def fake_resolver_colocacion_tropas(jugador_estado, t_destino, tropas, **kwargs):
         jugador_estado.tropas_reserva -= tropas
         t_destino.units += tropas
 

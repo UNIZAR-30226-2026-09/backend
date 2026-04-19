@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import flag_modified
+
 from app.core.map_state import map_calculator
 from app.core.logica_juego.validaciones import validar_ataque_convencional
 from app.core.logica_juego.combate import resolver_ataque_completo
@@ -7,13 +9,14 @@ from app.core.logica_juego.maquina_estados import avanzar_fase
 from app.api.deps import obtener_usuario_actual
 from app.models.usuario import User
 from app.db.session import get_db
-from app.schemas.combate import AtaqueCreate, ResultadoAtaqueCompleto, MoverConquistaIn, MoverConquistaOut, ColocarTropasIn, PasarFaseOut, ColocarTropasOut
+from app.schemas.combate import AtaqueCreate, ResultadoAtaqueCompleto, MoverConquistaIn, MoverConquistaOut, ColocarTropasIn, PasarFaseOut, ColocarTropasOut, AtaqueEspecialIn, AtaqueEspecialOut
 from app.schemas.estado_juego import TerritorioBase, JugadorBase
 from app.crud import crud_combates
 from app.crud.crud_partidas import obtener_estado_partida, verificar_y_finalizar_partida
 
 from app.core.logica_juego.validaciones import validar_colocacion_tropas
 from app.core.logica_juego.combate import resolver_colocacion_tropas, aplicar_resultado_combate, ejecutar_conquista
+from app.core.logica_juego.ataques_especiales import REGISTRO_ATAQUES
 from app.core.logica_juego.utils import obtener_datos_territorio, verificar_movimiento_pendiente
 from app.core.notifier import notifier
 
@@ -243,8 +246,14 @@ async def colocar_tropas_reserva(
     except ValueError as e:
         raise HTTPException(400, str(e))
 
-    resolver_colocacion_tropas(jugador_estado, t_destino, datos.tropas)
-
+    await resolver_colocacion_tropas(
+        jugador_estado, 
+        t_destino, 
+        datos.tropas, 
+        data_territorio=estado_partida.mapa[datos.territorio_id],
+        jugadores_estado=estado_partida.jugadores,
+        partida_id=partida_id
+    )
     estado_partida.mapa[datos.territorio_id] = t_destino.model_dump()
     estado_partida.jugadores[jugador_id] = jugador_estado.model_dump()
     await crud_combates.guardar_estado_partida(db, estado_partida)
@@ -257,3 +266,60 @@ async def colocar_tropas_reserva(
         "mensaje": f"Has metido {datos.tropas} soldados en {datos.territorio_id}",
         "reserva_restante": jugador_estado.tropas_reserva
     }
+
+
+@router.post("/partidas/{partida_id}/ataque_especial", response_model=AtaqueEspecialOut,status_code=status.HTTP_200_OK)
+async def ejecutar_ataque_especial(
+    partida_id: int,
+    ataque_in: AtaqueEspecialIn,
+    usuario_actual: User = Depends(obtener_usuario_actual),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Ejecuta un ataque de guerra tecnológica o biológica (Mortero, Misil, Virus, etc.)
+    """
+    estado_partida = await obtener_estado_partida(db, partida_id)
+    atacante_id = usuario_actual.username
+
+    # Es su turno ¿?
+    if estado_partida.user_turno_actual != atacante_id:
+        raise HTTPException(403, "No puedes lanzar ataques fuera de tu turno")
+
+    # Tiene ese ataque ¿?
+    jugador = estado_partida.jugadores.get(atacante_id)
+    if not jugador:
+        raise HTTPException(404, "Jugador no encontrado en la partida")
+    tecnologias_compradas = jugador.get("tecnologias_compradas", [])
+    if ataque_in.tipo_ataque not in tecnologias_compradas:
+        raise HTTPException(400, f"No has desarrollado la tecnología: {ataque_in.tipo_ataque}")
+
+    funcion_ataque = REGISTRO_ATAQUES.get(ataque_in.tipo_ataque)
+    if not funcion_ataque:
+        raise HTTPException(400, "Arma o tecnología desconocida")
+
+    try:
+        # Ejecutamos el ataque
+        resultado_accion = funcion_ataque(estado_partida, atacante_id, ataque_in.origen, ataque_in.destino)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+    flag_modified(estado_partida, "mapa")
+    flag_modified(estado_partida, "jugadores")
+    await crud_combates.guardar_estado_partida(db, estado_partida)
+
+
+    # Notificar al resto de la partida
+    await notifier.enviar_ataque_especial(
+        partida_id=partida_id, 
+        atacante_id=atacante_id, 
+        tipo_ataque=ataque_in.tipo_ataque, 
+        origen_id=ataque_in.origen, 
+        destino_id=ataque_in.destino,
+        resultado=resultado_accion
+    )
+
+    return AtaqueEspecialOut(
+        mensaje=f"Has lanzado {ataque_in.tipo_ataque} sobre {ataque_in.destino} con éxito.",
+        tipo_ataque=ataque_in.tipo_ataque,
+        destino=ataque_in.destino
+    )

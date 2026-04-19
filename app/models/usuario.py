@@ -9,9 +9,9 @@ from typing import List
 # ----------------------------------------------------------------------------
 
 class EstadoAmistad(str, enum.Enum):
-    PENDIENTE = "pendiente"
-    ACEPTADA = "aceptada"
-    RECHAZADA = "rechazada"
+    PENDIENTE = "PENDIENTE"
+    ACEPTADA = "ACEPTADA"
+    RECHAZADA = "RECHAZADA"
 
 # ----------------------------------------------------------------------------
 # PRINCIPALES
@@ -57,8 +57,9 @@ class Estadistica(Base):
 class Amistad(Base):
     __tablename__ = "amistades"
 
-    user_1: Mapped[str] = mapped_column(ForeignKey("usuarios.username", ondelete="CASCADE"), primary_key=True)
-    user_2: Mapped[str] = mapped_column(ForeignKey("usuarios.username", ondelete="CASCADE"), primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    user_1: Mapped[str] = mapped_column(ForeignKey("usuarios.username", ondelete="CASCADE"))
+    user_2: Mapped[str] = mapped_column(ForeignKey("usuarios.username", ondelete="CASCADE"))
     
     estado: Mapped[EstadoAmistad] = mapped_column(
         Enum(EstadoAmistad, name="estado_amistad_enum", create_constraint=True), 

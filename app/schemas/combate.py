@@ -1,8 +1,19 @@
 from pydantic import BaseModel, Field
+from typing import Optional
 
 class AtaqueCreate(BaseModel):
     territorio_origen_id: str
     territorio_destino_id: str
+
+class AtaqueEspecialIn(BaseModel):
+    tipo_ataque: str
+    origen: Optional[str] = None 
+    destino: str
+
+class AtaqueEspecialOut(BaseModel):
+    mensaje: str
+    tipo_ataque: str
+    destino: str
 
 class ResultadoAtaqueCompleto(BaseModel):
     victoria_atacante: bool

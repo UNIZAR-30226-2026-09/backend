@@ -15,7 +15,7 @@ from app.core.logica_juego.utils import obtener_datos_territorio
 from app.schemas.estado_juego import TerritorioBase
 
 from app.schemas.partida import PartidaCreate, PartidaRead, VotoPausa
-from app.schemas.partida import AccionPausaOut, EmpezarPartidaOut, VerEstadoPartidaOut, UnirseOut, AbandonarOut
+from app.schemas.partida import AccionPausaOut, EmpezarPartidaOut, VerEstadoPartidaOut, PartidaActivaOut, UnirseOut, AbandonarOut
 from app.schemas.partida import FortificarIn
 from app.schemas.partida import AsignarTrabajoIn, AsignarInvestigacionIn, ComprarTecnologiaIn
 from app.models.partida import EstadosPartida, EstadoPartida, FasePartida
@@ -138,6 +138,10 @@ async def unirse_partida(
 
     jugadores_actualizados = await crud_partidas.obtener_jugadores_partida(db, partida.id)
     
+    if len(jugadores_actuales) == 0:
+        await crud_partidas.actualizar_creador_partida(db, partida, usuario_actual.username)
+
+
     return UnirseOut(
         mensaje="Unido a la partida",
         jugadores_en_sala=jugadores_actualizados,
@@ -257,6 +261,32 @@ async def empezar_partida(
         "fase": "refuerzo"
     }
 
+
+@router.get("/mi-partida", response_model=PartidaActivaOut, status_code=status.HTTP_200_OK)
+async def obtener_mi_partida_activa(
+    usuario_actual: User = Depends(obtener_usuario_actual),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Devuelve la partida activa del jugador autenticado, si existe.
+    Útil para reconectar tras cerrar la app.
+    """
+    entrada = await crud_partidas.obtener_partida_activa_del_jugador(db, usuario_actual.username)
+    if not entrada:
+        raise HTTPException(status_code=404, detail="No tienes ninguna partida activa")
+
+    partida = await crud_partidas.obtener_partida_por_id(db, entrada.partida_id)
+    estado = await crud_partidas.obtener_estado_partida(db, entrada.partida_id)
+
+    return {
+        "partida_id": partida.id,
+        "estado": partida.estado,
+        "codigo_invitacion": partida.codigo_invitacion,
+        "fase_actual": estado.fase_actual if estado else None,
+        "turno_de": estado.user_turno_actual if estado else None,
+        "fin_fase_utc": estado.fin_fase_actual if estado else None,
+    }
+
 @router.get("/{partida_id}/estado", response_model=VerEstadoPartidaOut, status_code=status.HTTP_200_OK)
 async def ver_estado_partida(
     partida_id: int,
@@ -369,6 +399,10 @@ async def fortificar_tropas(
         raise HTTPException(status_code=400, detail=str(e))
 
     resolver_fortificacion(estado.mapa, datos.origen, datos.destino, datos.tropas)
+    
+    estado.jugadores[usuario_actual.username]["ha_fortificado"] = True
+    flag_modified(estado, "jugadores")
+    
     await crud_combates.guardar_estado_partida(db, estado)
 
     await notifier.enviar_movimiento_conquista(

@@ -1,6 +1,10 @@
 import random
-from app.schemas.combate import ResultadoAtaqueCompleto
+import math
 
+from app.schemas.combate import ResultadoAtaqueCompleto
+from app.core.logica_juego.config_ataques_especiales import TipoEfecto
+
+from app.core.notifier import notifier
 
 def validar_tropas(tropas_atacantes: int, tropas_defensoras: int):
     if tropas_atacantes < 1 or tropas_defensoras < 1:
@@ -39,9 +43,15 @@ def calcular_estado_final(tropas_defensoras, bajas_defensor):
     return tropas_restantes, victoria
 
 
-def resolver_colocacion_tropas(jugador_estado, t_destino, tropas_a_poner: int):
+
+
+async def resolver_colocacion_tropas(jugador_estado, t_destino, tropas_a_poner: int, data_territorio: dict, jugadores_estado: dict, partida_id):
+    
     jugador_estado.tropas_reserva -= tropas_a_poner
     t_destino.units += tropas_a_poner
+
+    # notifier.enviar_tropas_colocadas
+
 
 def resolver_fortificacion(estado_mapa: dict, origen_id: str, destino_id: str, tropas: int):
     estado_mapa[origen_id]["units"] -= tropas

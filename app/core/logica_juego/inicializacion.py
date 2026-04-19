@@ -67,7 +67,8 @@ def determinar_orden_jugadores(jugadores):
             "tropas_reserva": 0,
             "movimiento_conquista_pendiente": False,
             "origen_conquista": None,
-            "destino_conquista": None
+            "destino_conquista": None,
+            "ha_fortificado": False
         }
         
         if j.turno == 1:

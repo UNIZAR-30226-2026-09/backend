@@ -11,6 +11,7 @@ class EstadoDummy:
         self.user_turno_actual = turno
         self.fase_actual = fase
         self.mapa = mapa if mapa is not None else {}
+        self.jugadores = {turno: {"ha_fortificado": False}}
 
 
 def _get_vecinas():

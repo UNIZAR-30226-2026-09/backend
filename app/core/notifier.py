@@ -63,6 +63,20 @@ class GameNotifier:
         }, partida_id)
 
     @staticmethod
+    async def enviar_ataque_especial(partida_id: int, atacante_id: str, tipo_ataque: str, origen_id: str, destino_id: str, resultado=None):
+        payload = {
+            "tipo_evento": "ataque_especial",
+            "atacante": atacante_id,
+            "tipo": tipo_ataque,
+            "origen": origen_id,
+            "destino": destino_id
+        }
+        if resultado is not None:
+            payload["resultado"] = resultado
+
+        await manager.broadcast(payload, partida_id)
+
+    @staticmethod
     async def enviar_tropas_colocadas(partida_id: int, jugador_id: str, territorio_id: str, añadidos: int, totales: int):
         await manager.broadcast({
             "tipo_evento": "TROPAS_COLOCADAS",
@@ -72,6 +86,18 @@ class GameNotifier:
             "tropas_totales_ahora": totales
         }, partida_id)
 
+
+    @staticmethod
+    async def enviar_cambio_fase(partida_id: int, nueva_fase: str, jugador_activo: str, tropas_recibidas: int, motivo_refuerzos: str, fin_fase_utc: str):
+        await manager.broadcast({
+            "tipo_evento": "CAMBIO_FASE",
+            "nueva_fase": nueva_fase,
+            "jugador_activo": jugador_activo,
+            "tropas_recibidas": tropas_recibidas,
+            "motivo_refuerzos": motivo_refuerzos,
+            "fin_fase_utc": fin_fase_utc
+        }, partida_id)
+
     @staticmethod
     async def enviar_jugador_eliminado(partida_id: int, username: str):
 
@@ -79,6 +105,71 @@ class GameNotifier:
             "tipo_evento": "JUGADOR_ELIMINADO",
             "username": username,
             "mensaje": f"¡{username} ha sido borrado del mapa!"
+        }, partida_id)
+
+    @staticmethod
+    async def enviar_actualizacion_territorio(partida_id: int, territorio_id: str, data_territorio: dict):
+        """
+        Envía el objeto completo del territorio: tropas, propietario y estados (virus, bloqueos, etc.)
+        """
+
+        await manager.broadcast({
+            "tipo_evento": "TERRITORIO_ACTUALIZADO",
+            "territorio_id": territorio_id,
+            "detalles": data_territorio
+        }, partida_id)
+
+    @staticmethod
+    async def enviar_investigacion_completada(partida_id: int, usuario_id: str, rama: str, nuevo_nivel: int, territorio_id: str, techs_desbloqueadas: list):
+        """
+        Notifica que una investigación ha tenido éxito y se han desbloqueado tecnologías.
+        """
+        await manager.broadcast({
+            "tipo_evento": "INVESTIGACION_COMPLETADA",
+            "usuario_id": usuario_id,
+            "rama": rama,
+            "nivel": nuevo_nivel,
+            "territorio_id": territorio_id,
+            "nuevas_tecnologias": techs_desbloqueadas,
+            "mensaje": f"Investigación en {rama} (Nivel {nuevo_nivel}) completada en {territorio_id}."
+        }, partida_id)
+
+    @staticmethod
+    async def enviar_trabajo_completado(partida_id: int, usuario_id: str, territorio_id: str, ganancia: int):
+        """
+        Notifica que un territorio ha terminado de producir monedas.
+        """
+        await manager.broadcast({
+            "tipo_evento": "TRABAJO_COMPLETADO",
+            "usuario_id": usuario_id,
+            "territorio_id": territorio_id,
+            "ganancia": ganancia,
+            "mensaje": f"Producción en {territorio_id} finalizada. ¡+ {ganancia} monedas!"
+        }, partida_id)
+
+    @staticmethod
+    async def enviar_evento_fatiga(partida_id: int, usuario_id: str, territorio_id: str, accion: str):
+        """
+        Notifica que una acción (investigar/trabajar) no ha avanzado este turno por fatiga.
+        """
+        await manager.broadcast({
+            "tipo_evento": "EVENTO_FATIGA",
+            "usuario_id": usuario_id,
+            "territorio_id": territorio_id,
+            "accion_bloqueada": accion,
+            "mensaje": f"Las tropas en {territorio_id} están demasiado cansadas para terminar de {accion}."
+        }, partida_id)
+
+
+    @staticmethod
+    async def enviar_propaganda_activada(partida_id: int, victima_id: str, beneficiario_id: str, cantidad: int):
+
+        await manager.broadcast({
+            "tipo_evento": "PROPAGANDA_ACTIVADA",
+            "victima_id": victima_id,
+            "beneficiario": beneficiario_id,
+            "cantidad_robada": cantidad,
+            "mensaje": f"¡Propaganda! {beneficiario_id} ha interceptado {cantidad} tropas de {victima_id}."
         }, partida_id)
 
     @staticmethod

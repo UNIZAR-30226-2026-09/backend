@@ -335,3 +335,17 @@ async def verificar_y_finalizar_partida(db: AsyncSession, partida_id: int) -> Op
 
     # Hay más de un jugador, la partida sigue
     return None
+
+# ----------------------------------------------------------------------------
+# 13. ACTUALIZAR CREADOR DE LA PARTIDA
+# ----------------------------------------------------------------------------
+async def actualizar_creador_partida(
+    db: AsyncSession, 
+    partida: Partida, 
+    nuevo_creador_username: str
+) -> None:
+    """
+    Cambia el creador (host) de una partida existente.
+    """
+    partida.creador = nuevo_creador_username
+    await db.commit()

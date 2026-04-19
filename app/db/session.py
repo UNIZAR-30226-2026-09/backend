@@ -10,7 +10,10 @@ if "sqlite" not in settings.DATABASE_URL:
     engine_args["pool_size"] = 5
     engine_args["max_overflow"] = 0
     engine_args["pool_pre_ping"] = True
-    engine_args["connect_args"] = {"ssl": True} 
+    engine_args["connect_args"] = {
+        "ssl": True,
+        "statement_cache_size": 0,  # evita el error "cache lookup failed for type OID" en asyncpg
+    }
 
 # Motor de conexión asíncrono dinámico
 engine = create_async_engine(
