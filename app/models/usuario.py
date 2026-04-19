@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, ForeignKey, Integer, Enum, CheckConstraint
+from sqlalchemy import String, ForeignKey, Integer, Enum, CheckConstraint, JSON
 from app.db.base import Base
 import enum
 from typing import List
@@ -38,14 +38,15 @@ class Estadistica(Base):
     nombre_user: Mapped[str] = mapped_column(ForeignKey("usuarios.username", ondelete="CASCADE"), primary_key=True)
     num_partidas_jugadas: Mapped[int] = mapped_column(Integer, default=0)
     num_partidas_ganadas: Mapped[int] = mapped_column(Integer, default=0)
-    num_continentes_conquistados: Mapped[int] = mapped_column(Integer, default=0) 
+    num_regiones_conquistadas: Mapped[int] = mapped_column(Integer, default=0)
     num_soldados_matados: Mapped[int] = mapped_column(Integer, default=0)
+    conquistas_por_region: Mapped[dict] = mapped_column(JSON, default=dict)
 
     # CONDICIONES
     __table_args__ = (
         CheckConstraint('num_partidas_jugadas >= 0', name='check_partidas_jugadas_positivas'),
         CheckConstraint('num_partidas_ganadas >= 0', name='check_partidas_ganadas_positivas'),
-        CheckConstraint('num_continentes_conquistados >= 0', name='check_regiones_positivas'),
+        CheckConstraint('num_regiones_conquistadas >= 0', name='check_regiones_positivas'),
         CheckConstraint('num_soldados_matados >= 0', name='check_tropas_positivas'),
     )
 

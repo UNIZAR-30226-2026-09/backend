@@ -61,10 +61,13 @@ async def ejecutar_ataque(
 
     aplicar_resultado_combate(t_origen, t_destino, resultado)
 
+    bajas_actuales = getattr(jugador_estado, "bajas_causadas", 0)
+    jugador_estado.bajas_causadas = getattr(jugador_estado, "bajas_causadas", 0) + resultado.bajas_defensor    
     if resultado.victoria_atacante:
         ejecutar_conquista(t_destino, jugador_estado, atacante_id, 
                           ataque_in.territorio_origen_id, 
-                          ataque_in.territorio_destino_id)
+                          ataque_in.territorio_destino_id,
+                          bajas_defensor_en_combate=resultado.bajas_defensor)
         
         if getattr(t_destino, "estado_bloqueo", None) is not None:
             # Quitamos el bloqueo al territorio

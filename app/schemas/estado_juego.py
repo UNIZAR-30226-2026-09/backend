@@ -27,3 +27,6 @@ class JugadorBase(BaseModel):
 
     tecnologias_predesbloqueadas: List[str] = Field(default_factory=list)
     tecnologias_compradas: List[str] = Field(default_factory=list)
+
+    bajas_causadas: int = Field(default=0)
+    historial_conquistas: Dict[str, int] = Field(default_factory=dict)

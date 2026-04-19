@@ -291,18 +291,44 @@ async def verificar_y_finalizar_partida(db: AsyncSession, partida_id: int) -> Op
     Si solo queda uno, finaliza la partida y lo establece como ganador.
     Retorna el username del ganador o None si el juego continúa.
     """
-
     jugadores_vivos = await obtener_jugadores_vivos(db, partida_id)
 
     # Solo un jugador, hay que terminar la partida
     if len(jugadores_vivos) == 1:
-
         ganador_username = jugadores_vivos[0].usuario_id
         partida = await obtener_partida_por_id(db, partida_id)
 
         if partida:
             partida.estado = EstadosPartida.FINALIZADA
             partida.ganador = ganador_username
+            
+            # --- TAREA 19: REGISTRAR ESTADÍSTICAS HISTÓRICAS ---
+            from app.crud import crud_estadisticas
+            
+            # Obtenemos el estado para sacar los datos de la partida
+            estado = await obtener_estado_partida(db, partida_id)
+            # Obtenemos todos los que participaron (vivos y muertos)
+            todos_los_participantes = await obtener_jugadores_partida(db, partida_id)
+            
+            for p in todos_los_participantes:
+                es_ganador = (p.usuario_id == ganador_username)
+                
+                # Extraemos los datos acumulados en el JSON de la partida
+                datos_partida = estado.jugadores.get(p.usuario_id, {}) if estado else {}
+                
+                # vas sumando estos valores al JSON 'jugadores' del estado.
+                regiones = datos_partida.get("historial_conquistas", {}) 
+                bajas = datos_partida.get("bajas_causadas", 0)
+
+                await crud_estadisticas.registrar_fin_partida(
+                    db=db,
+                    nombre_user=p.usuario_id,
+                    es_ganador=es_ganador,
+                    regiones_conquistadas=regiones,
+                    soldados_matados_en_partida=bajas
+                )
+            # ---------------------------------------------------
+            
             await db.commit()
             
         return ganador_username

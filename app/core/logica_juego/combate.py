@@ -78,8 +78,34 @@ def aplicar_resultado_combate(t_origen, t_destino, resultado: ResultadoAtaqueCom
     t_origen.units = resultado.tropas_restantes_origen
     t_destino.units = resultado.tropas_restantes_defensor
 
-def ejecutar_conquista(t_destino, jugador_estado, atacante_id: str, origen_id: str, destino_id: str):
+def ejecutar_conquista(t_destino, jugador_estado, atacante_id: str, origen_id: str, destino_id: str, bajas_defensor_en_combate: int = 0):
     t_destino.owner_id = atacante_id
-    jugador_estado.movimiento_conquista_pendiente = True
-    jugador_estado.origen_conquista = origen_id
-    jugador_estado.destino_conquista = destino_id
+
+    if isinstance(jugador_estado, dict):
+        jugador_estado["movimiento_conquista_pendiente"] = True
+        jugador_estado["origen_conquista"] = origen_id
+        jugador_estado["destino_conquista"] = destino_id
+                
+        if "historial_conquistas" not in jugador_estado:
+            jugador_estado["historial_conquistas"] = {}
+            
+        conquistas_previas = jugador_estado["historial_conquistas"].get(destino_id, 0)
+        jugador_estado["historial_conquistas"][destino_id] = conquistas_previas + 1
+        
+        bajas_previas = jugador_estado.get("bajas_causadas", 0)
+        jugador_estado["bajas_causadas"] = bajas_previas + bajas_defensor_en_combate
+        
+    else:
+        jugador_estado.movimiento_conquista_pendiente = True
+        jugador_estado.origen_conquista = origen_id
+        jugador_estado.destino_conquista = destino_id
+        
+        if not hasattr(jugador_estado, "historial_conquistas"):
+            jugador_estado.historial_conquistas = {}
+            
+        conquistas_previas = jugador_estado.historial_conquistas.get(destino_id, 0)
+        jugador_estado.historial_conquistas[destino_id] = conquistas_previas + 1
+        
+        if not hasattr(jugador_estado, "bajas_causadas"):
+            jugador_estado.bajas_causadas = 0
+        jugador_estado.bajas_causadas += bajas_defensor_en_combate

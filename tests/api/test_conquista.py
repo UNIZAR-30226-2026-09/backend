@@ -19,12 +19,17 @@ def test_gestionar_victoria_actualiza_estado_de_conquista():
         atacante_id="atacante",
         origen_id="A",
         destino_id="B",
+        bajas_defensor_en_combate=3
     )
 
     assert t_destino.owner_id == "atacante"
     assert jugador_estado.movimiento_conquista_pendiente is True
     assert jugador_estado.origen_conquista == "A"
     assert jugador_estado.destino_conquista == "B"
+    assert jugador_estado.bajas_causadas == 3
+
+    assert "B" in jugador_estado.historial_conquistas
+    assert jugador_estado.historial_conquistas["B"] == 1
 
 
 def test_gestionar_victoria_no_modifica_si_no_hay_conquista():
