@@ -39,6 +39,33 @@ async def verificar_eliminacion_jugador(db: AsyncSession, partida_id: int, defen
     territorios_restantes = obtener_territorios_jugador(mapa_actualizado, defensor_id)
     
     if len(territorios_restantes) == 0:
+
+        query_estado = select(EstadoPartida).where(EstadoPartida.partida_id == partida_id)
+        resultado_estado = await db.execute(query_estado)
+        estado = resultado_estado.scalar_one_or_none()
+
+        if estado:
+            atacante_id = estado.user_turno_actual
+            jugadores = estado.jugadores
+            
+            perdedor = jugadores.get(defensor_id, {})
+            monedas_saqueadas = perdedor.get("monedas", 0)
+            
+            if monedas_saqueadas > 0:
+                atacante = jugadores.get(atacante_id, {})
+                
+                # Transferimos los fondos
+                atacante["monedas"] = atacante.get("monedas", 0) + monedas_saqueadas
+                perdedor["monedas"] = 0
+                
+                # Guardamos en el diccionario
+                jugadores[defensor_id] = perdedor
+                jugadores[atacante_id] = atacante
+                estado.jugadores = jugadores
+                
+                # Avisamos a SQLAlchemy de que el JSON ha cambiado
+                flag_modified(estado, "jugadores")
+
         # El jugador ha perdido todo, lo buscamos en la tabla JugadoresPartida
         query = select(JugadoresPartida).where(
             JugadoresPartida.partida_id == partida_id,

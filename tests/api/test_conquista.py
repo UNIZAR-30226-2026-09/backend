@@ -5,8 +5,10 @@ from app.core.logica_juego.utils import obtener_datos_territorio, verificar_movi
 from app.core.logica_juego.combate import aplicar_resultado_combate, ejecutar_conquista, cobrar_incentivo_ataque
 from app.core.logica_juego.validaciones import validar_ataque_convencional
 from app.core.map_state import map_calculator, game_map_state
-from app.models.partida import FasePartida
+from app.models.partida import FasePartida, EstadoPartida, JugadoresPartida, EstadoJugador
 from app.schemas.estado_juego import JugadorBase, TerritorioBase
+from unittest.mock import AsyncMock, MagicMock
+from app.crud.crud_combates import verificar_eliminacion_jugador
 
 
 def test_gestionar_victoria_actualiza_estado_de_conquista():
