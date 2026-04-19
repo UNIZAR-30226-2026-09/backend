@@ -19,6 +19,8 @@ from app.core.logica_juego.config_ataques_especiales import TipoAtaque, TipoEfec
 from app.core.logica_juego.ataques_especiales import calcular_refuerzos_academia, calcular_robo_propaganda
 from app.core.logica_juego.efectos_persistentes import procesar_efectos_fin_de_turno, procesar_efectos_inicio_turno
 
+from app.core.map_state import game_map_state
+
 from app.core.notifier import notifier
 # Guarda las tareas para que Python no las borre por error
 tareas_en_segundo_plano = set()
@@ -154,7 +156,9 @@ async def calcular_siguiente_jugador(partida_id: int, jugador_actual: str, db: A
 async def asignar_tropas_reserva(estado: EstadoPartida, db: AsyncSession) -> int:
     """
     Calcula y asigna las tropas de refuerzo a un jugador basándose en sus territorios.
-    Regla: territorios / 3 (mínimo 3).
+    Reglas: 
+    - Base: territorios / 3 (mínimo 3).
+    - Bonus: +1 por cada territorio de una comarca si se posee entera.
     """
     jugador_id = estado.user_turno_actual
     estado.jugadores[jugador_id]["ha_fortificado"] = False
@@ -178,14 +182,28 @@ async def asignar_tropas_reserva(estado: EstadoPartida, db: AsyncSession) -> int
             fin_fase_utc=estado.fin_fase_actual.isoformat()
         )
 
-
         return 0
-
 
     territorios_propios = obtener_territorios_jugador(estado.mapa, estado.user_turno_actual)
 
     # Minimo le damos 3 en cada ronda    
     tropas_recibidas = max(3, len(territorios_propios) // 3)
+
+    set_territorios_propios = set(territorios_propios) 
+    bonus_regiones = 0
+
+    for datos_region in game_map_state.regions.values():
+        
+        lista_comarcas_region = datos_region.get("comarcas", []) if isinstance(datos_region, dict) else datos_region.comarcas
+        
+        # Verificamos si el jugador posee todas las comarcas de esta región
+        if all(territorio in set_territorios_propios for territorio in lista_comarcas_region):
+            
+            bonus = len(lista_comarcas_region)
+            bonus_regiones += bonus
+            
+    # Añadimos el bonus al total de tropas base
+    tropas_recibidas += bonus_regiones
 
     # Si tengo ACADEMIA_MILITAR, se me multiplican las tropas.
     if TipoAtaque.ACADEMIA_MILITAR in jugador.get("tecnologias_compradas", []):
@@ -217,6 +235,8 @@ async def asignar_tropas_reserva(estado: EstadoPartida, db: AsyncSession) -> int
         tropas_recibidas=tropas_recibidas,
         motivo_refuerzos=motivo_especial,
     )
+
+    return tropas_recibidas
 
 def territorio_esta_fatigado(territorio_data: dict) -> bool:
     """
