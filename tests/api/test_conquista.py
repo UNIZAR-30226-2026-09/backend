@@ -2,7 +2,7 @@ import pytest
 from fastapi import HTTPException, status
 
 from app.core.logica_juego.utils import obtener_datos_territorio, verificar_movimiento_pendiente
-from app.core.logica_juego.combate import aplicar_resultado_combate, ejecutar_conquista
+from app.core.logica_juego.combate import aplicar_resultado_combate, ejecutar_conquista, cobrar_incentivo_ataque
 from app.core.logica_juego.validaciones import validar_ataque_convencional
 from app.core.map_state import map_calculator, game_map_state
 from app.models.partida import FasePartida
@@ -136,3 +136,10 @@ def test_validar_ataque_no_colindante_lanza_error():
             "player",
             map_calculator,
         )
+
+def test_cobrar_incentivo_ataque_suma_monedas():
+    jugador_estado = JugadorBase(monedas=100)
+    
+    cobrar_incentivo_ataque(jugador_estado)
+    
+    assert jugador_estado.monedas == 150

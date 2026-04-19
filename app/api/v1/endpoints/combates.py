@@ -15,7 +15,7 @@ from app.crud import crud_combates
 from app.crud.crud_partidas import obtener_estado_partida, verificar_y_finalizar_partida
 
 from app.core.logica_juego.validaciones import validar_colocacion_tropas
-from app.core.logica_juego.combate import resolver_colocacion_tropas, aplicar_resultado_combate, ejecutar_conquista
+from app.core.logica_juego.combate import resolver_colocacion_tropas, aplicar_resultado_combate, ejecutar_conquista, cobrar_incentivo_ataque
 from app.core.logica_juego.ataques_especiales import REGISTRO_ATAQUES
 from app.core.logica_juego.utils import obtener_datos_territorio, verificar_movimiento_pendiente
 from app.core.notifier import notifier
@@ -86,6 +86,8 @@ async def ejecutar_ataque(
                 if defensor_dict.get("territorio_investigando") == ataque_in.territorio_destino_id:
                     defensor_dict["territorio_investigando"] = None
                     defensor_dict["rama_investigando"] = None
+
+    cobrar_incentivo_ataque(jugador_estado)
 
     estado_partida.mapa[ataque_in.territorio_origen_id] = t_origen.model_dump()
     estado_partida.mapa[ataque_in.territorio_destino_id] = t_destino.model_dump()

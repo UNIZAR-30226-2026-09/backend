@@ -119,3 +119,11 @@ def ejecutar_conquista(t_destino, jugador_estado, atacante_id: str, origen_id: s
         if not hasattr(jugador_estado, "bajas_causadas"):
             jugador_estado.bajas_causadas = 0
         jugador_estado.bajas_causadas += bajas_defensor_en_combate
+
+def cobrar_incentivo_ataque(jugador_estado):
+    """Otorga 50 monedas al jugador por el simple hecho de realizar un ataque."""
+    if isinstance(jugador_estado, dict):
+        monedas_actuales = jugador_estado.get("monedas", 0)
+        jugador_estado["monedas"] = monedas_actuales + 50
+    else:
+        jugador_estado.monedas = getattr(jugador_estado, "monedas", 0) + 50
