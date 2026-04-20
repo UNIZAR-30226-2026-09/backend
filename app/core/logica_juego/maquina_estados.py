@@ -92,6 +92,18 @@ async def avanzar_fase(
     tareas_en_segundo_plano.add(tarea_timer)
     tarea_timer.add_done_callback(tareas_en_segundo_plano.discard)
 
+    # Si la fase nueva no es REFUERZO, mandamos el aviso al frontend.
+    # (En REFUERZO ya se manda el aviso por dentro de asignar_tropas_reserva)
+    if nueva_fase != FasePartida.REFUERZO:
+        await notifier.enviar_cambio_fase(
+            partida_id=partida_id,
+            nueva_fase=nueva_fase.value,
+            jugador_activo=estado.user_turno_actual,
+            tropas_recibidas=0,
+            motivo_refuerzos="normal",
+            fin_fase_utc=estado.fin_fase_actual.isoformat()
+        )
+        
     return estado
 
 
