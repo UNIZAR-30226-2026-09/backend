@@ -234,6 +234,7 @@ async def asignar_tropas_reserva(estado: EstadoPartida, db: AsyncSession) -> int
         jugador_activo=jugador_id,
         tropas_recibidas=tropas_recibidas,
         motivo_refuerzos=motivo_especial,
+        fin_fase_utc=estado.fin_fase_actual.isoformat()
     )
 
     return tropas_recibidas
