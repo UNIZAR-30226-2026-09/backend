@@ -38,6 +38,7 @@ class Estadistica(Base):
     nombre_user: Mapped[str] = mapped_column(ForeignKey("usuarios.username", ondelete="CASCADE"), primary_key=True)
     num_partidas_jugadas: Mapped[int] = mapped_column(Integer, default=0)
     num_partidas_ganadas: Mapped[int] = mapped_column(Integer, default=0)
+    num_continentes_conquistados: Mapped[int] = mapped_column(Integer, default=0)
     num_regiones_conquistadas: Mapped[int] = mapped_column(Integer, default=0)
     num_soldados_matados: Mapped[int] = mapped_column(Integer, default=0)
     conquistas_por_region: Mapped[dict] = mapped_column(JSON, default=dict)

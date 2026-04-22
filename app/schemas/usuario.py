@@ -31,6 +31,7 @@ class EstadisticaRead(BaseModel):
     nombre_user: str
     num_partidas_jugadas: int
     num_partidas_ganadas: int
+    num_continentes_conquistados: int
     num_regiones_conquistadas: int
     num_soldados_matados: int
     conquistas_por_region: dict
