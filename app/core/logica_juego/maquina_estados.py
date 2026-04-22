@@ -13,7 +13,7 @@ from app.models.partida import EstadoPartida, FasePartida, JugadoresPartida, Est
 from app.core.ws_manager import manager
 from app.crud.crud_partidas import actualizar_tropas_reserva
 from app.core.logica_juego.utils import obtener_territorios_jugador
-from app.core.logica_juego.constantes import ARBOL_TECNOLOGICO
+from app.core.logica_juego.constantes import ARBOL_TECNOLOGICO, HABILIDADES
 
 from app.core.logica_juego.config_ataques_especiales import TipoAtaque, TipoEfecto
 from app.core.logica_juego.ataques_especiales import calcular_refuerzos_academia, calcular_robo_propaganda
@@ -292,8 +292,8 @@ async def resolver_gestion_ronda(estado: EstadoPartida, user_id: str):
 
     # RESOLVER INVESTIGACIÓN (Predesbloqueo)
     t_invest_id = jugador.get("territorio_investigando")
-    rama = jugador.get("rama_investigando")
-    if t_invest_id and rama and t_invest_id in estado.mapa:
+    habilidad_id = jugador.get("habilidad_investigando")
+    if t_invest_id and habilidad_id and t_invest_id in estado.mapa:
         territorio_inv = estado.mapa[t_invest_id]
 
         # Si esta fatigado, sigue investigando, todavia no nos da la recompensa
@@ -301,23 +301,21 @@ async def resolver_gestion_ronda(estado: EstadoPartida, user_id: str):
             await notifier.enviar_evento_fatiga(estado.partida_id, user_id, t_invest_id, "investigando")
         
         else:
-            # Avanzamos el nivel en esa rama
-            actual_nivel = jugador["nivel_ramas"].get(rama, 0)
-            nuevo_nivel = actual_nivel + 1
-            jugador["nivel_ramas"][rama] = nuevo_nivel
+            nodo = ARBOL_TECNOLOGICO.get(habilidad_id, {})
+
+            if habilidad_id not in jugador["tecnologias_predesbloqueadas"]:
+                jugador["tecnologias_predesbloqueadas"].append(habilidad_id)
             
-            # Predesbloqueamos las tecnologías de ese nivel
-            techs_a_desbloquear = ARBOL_TECNOLOGICO.get(rama, {}).get(nuevo_nivel, [])
-            for tech in techs_a_desbloquear:
-                if tech not in jugador["tecnologias_predesbloqueadas"]:
-                    jugador["tecnologias_predesbloqueadas"].append(tech)
+            techs_siguientes = nodo.get("desbloquea", [])
             
             # Liberamos el territorio
             estado.mapa[t_invest_id]["estado_bloqueo"] = None
             jugador["territorio_investigando"] = None
-            jugador["rama_investigando"] = None
+            jugador["habilidad_investigando"] = None
 
-            await notifier.enviar_investigacion_completada(estado.partida_id, user_id, rama, nuevo_nivel, t_invest_id, techs_a_desbloquear)
+            info = HABILIDADES.get(habilidad_id, {})             
+            await notifier.enviar_investigacion_completada(estado.partida_id, user_id, info.get("rama", ""), info.get("nivel", 0), t_invest_id, [habilidad_id], techs_siguientes)
+
             await notifier.enviar_actualizacion_territorio(estado.partida_id, t_invest_id, estado.mapa[t_invest_id])
 
     # Notificar a SQLAlchemy que el JSON ha cambiado

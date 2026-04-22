@@ -245,17 +245,18 @@ Para recibir notificaciones sociales fuera de una partida, el cliente debe abrir
 
 ### 6.1. Investigación Completada
 * **Dirección:** Servidor -> Todos los Clientes (Broadcast)
-* **Descripción:** Notifica que una investigación ha concluido y se han desbloqueado nuevas tecnologías para comprar.
+* **Descripción:** Notifica que una investigación ha concluido. `habilidades_desbloqueadas` contiene la habilidad que el jugador puede ahora comprar. `habilidades_siguientes` contiene las habilidades que se desbloquean para investigar a continuación.
 * **Payload recibido:**
     ```json
     {
         "tipo_evento": "INVESTIGACION_COMPLETADA",
         "usuario_id": "jugador_1",
         "rama": "biologica",
-        "nivel": 2,
+        "nivel": 1,
         "territorio_id": "Huesca",
-        "nuevas_tecnologias": ["coronavirus", "fatiga"],
-        "mensaje": "Investigación en biologica (Nivel 2) completada en Huesca."
+        "habilidades_desbloqueadas": ["gripe_aviar"],
+        "habilidades_siguientes": ["vacuna_universal", "fatiga"],
+        "mensaje": "Investigación completada en Huesca. Habilidad: ['gripe_aviar']."
     }
     ```
 

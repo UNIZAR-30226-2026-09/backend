@@ -85,7 +85,7 @@ async def ejecutar_ataque(
                     
                 if defensor_dict.get("territorio_investigando") == ataque_in.territorio_destino_id:
                     defensor_dict["territorio_investigando"] = None
-                    defensor_dict["rama_investigando"] = None
+                    defensor_dict["habilidad_investigando"] = None
 
     cobrar_incentivo_ataque(jugador_estado)
 

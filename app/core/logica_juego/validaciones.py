@@ -5,6 +5,8 @@ from app.models.partida import FasePartida
 from app.core.logica_juego.utils import obtener_territorios_jugador
 
 from app.core.logica_juego.config_ataques_especiales import TipoEfecto
+from app.core.logica_juego.constantes import ARBOL_TECNOLOGICO
+
 
 
 def validar_turno(jugador_actual: str, jugador_id: str):
@@ -151,7 +153,8 @@ def validar_asignar_trabajo(estado_partida, jugador_id: str, territorio_id: str,
     if t_destino.estado_bloqueo is not None:
         raise ValueError("Este territorio ya está ocupado.")
 
-def validar_asignar_investigacion(estado_partida, jugador_id: str, territorio_id: str, t_destino, rama: str):
+def validar_asignar_investigacion(estado_partida, jugador_id: str, t_destino, habilidad_id: str):
+    
     validar_fase_gestion(estado_partida, jugador_id)
     validar_propiedad_territorio(t_destino, jugador_id, "investigacion")
     
@@ -161,3 +164,24 @@ def validar_asignar_investigacion(estado_partida, jugador_id: str, territorio_id
         
     if t_destino.estado_bloqueo is not None:
         raise ValueError("Este territorio ya está ocupado.")
+    
+
+    nodo = ARBOL_TECNOLOGICO.get(habilidad_id)
+    if not nodo:
+        raise ValueError(f"La habilidad '{habilidad_id}' no existe.")
+
+    predesbloqueadas = estado_partida.jugadores[jugador_id].get("tecnologias_predesbloqueadas", [])
+    if habilidad_id in predesbloqueadas:
+        raise ValueError("Esta habilidad ya está predesbloqueada.")
+
+    prerequisito = nodo["prerequisito"]
+    if prerequisito is None:
+        return  # nivel 1, siempre disponible
+
+    # prerequisito puede ser str o list (coronavirus acepta cualquiera de los dos)
+    if isinstance(prerequisito, list):
+        if not any(p in predesbloqueadas for p in prerequisito):
+            raise ValueError("No has investigado ninguna de las tecnologias necesarias para investigar esta habilidad.")
+    else:
+        if prerequisito not in predesbloqueadas:
+            raise ValueError(f"Necesitas investigar '{prerequisito}' antes.")

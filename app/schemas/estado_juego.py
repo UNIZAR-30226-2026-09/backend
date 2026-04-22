@@ -24,13 +24,7 @@ class JugadorBase(BaseModel):
     monedas: int = Field(default=0, ge=0)
     territorio_trabajando: Optional[str] = None
     territorio_investigando: Optional[str] = None
-    rama_investigando: Optional[str] = None
-
-    nivel_ramas: Dict[str, int] = Field(default_factory=lambda: {
-        "biologica": 0,
-        "logistica": 0,
-        "artilleria": 0
-    })
+    habilidad_investigando: Optional[str] = None
 
     tecnologias_predesbloqueadas: List[str] = Field(default_factory=list)
     tecnologias_compradas: List[str] = Field(default_factory=list)

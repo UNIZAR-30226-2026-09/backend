@@ -9,14 +9,14 @@ from datetime import datetime, timedelta, timezone
 
 from app.core.map_state import map_calculator
 from app.core.logica_juego.validaciones import validar_fortificacion, validar_asignar_trabajo, validar_asignar_investigacion
-from app.core.logica_juego.constantes import PRECIOS_TECNOLOGIA, ARBOL_TECNOLOGICO
+from app.core.logica_juego.constantes import HABILIDADES, ARBOL_TECNOLOGICO
 from app.core.logica_juego.combate import resolver_fortificacion
 from app.core.logica_juego.utils import obtener_datos_territorio
 from app.schemas.estado_juego import TerritorioBase
 
 from app.schemas.partida import PartidaCreate, PartidaRead, VotoPausa
 from app.schemas.partida import AccionPausaOut, EmpezarPartidaOut, VerEstadoPartidaOut, PartidaActivaOut, UnirseOut, AbandonarOut
-from app.schemas.partida import FortificarIn
+from app.schemas.partida import FortificarIn, TecnologiasPartidaOut, HabilidadOut
 from app.schemas.partida import AsignarTrabajoIn, AsignarInvestigacionIn, ComprarTecnologiaIn
 from app.models.partida import EstadosPartida, EstadoPartida, FasePartida
 from app.api.deps import obtener_usuario_actual
@@ -449,21 +449,21 @@ async def asignar_investigacion(partida_id: int, datos: AsignarInvestigacionIn, 
     t_destino = obtener_datos_territorio(estado.mapa, datos.territorio_id)
 
     try:
-        validar_asignar_investigacion(estado, jugador_id, datos.territorio_id, t_destino, datos.rama)
+        validar_asignar_investigacion(estado, jugador_id, t_destino, datos.habilidad_id )
     except ValueError as e:
         raise HTTPException(400, str(e))
 
     # Aplicamos el bloqueo
     t_destino.estado_bloqueo = "investigando"
     estado.jugadores[jugador_id]["territorio_investigando"] = datos.territorio_id
-    estado.jugadores[jugador_id]["rama_investigando"] = datos.rama
+    estado.jugadores[jugador_id]["habilidad_investigando"] = datos.habilidad_id
     estado.mapa[datos.territorio_id] = t_destino.model_dump()
 
     flag_modified(estado, "jugadores")
     flag_modified(estado, "mapa")
     await db.commit()
 
-    return {"mensaje": f"El territorio {datos.territorio_id} está investigando la rama {datos.rama}."}
+    return {"mensaje": f"El territorio {datos.territorio_id} está investigando {datos.habilidad_id}."}
 
 @router.post("/{partida_id}/comprar_tecnologia")
 async def comprar_tecnologia(partida_id: int, datos: ComprarTecnologiaIn, usuario_actual: User = Depends(obtener_usuario_actual), db: AsyncSession = Depends(get_db)):
@@ -486,7 +486,7 @@ async def comprar_tecnologia(partida_id: int, datos: ComprarTecnologiaIn, usuari
     if tech_id in jugador.get("tecnologias_compradas", []):
         raise HTTPException(400, "Ya has comprado esta tecnología.")
 
-    precio = PRECIOS_TECNOLOGIA.get(tech_id)
+    precio = HABILIDADES.get(tech_id, {}).get("precio")
     if not precio:
         raise HTTPException(400, "Tecnología no válida.")
 
@@ -502,14 +502,40 @@ async def comprar_tecnologia(partida_id: int, datos: ComprarTecnologiaIn, usuari
 
     return {"mensaje": f"Has adquirido {tech_id} con éxito. Te quedan {jugador['monedas']} monedas."}
 
-@router.get("/tecnologias", status_code=status.HTTP_200_OK)
-async def obtener_info_tecnologias(usuario_actual: User = Depends(obtener_usuario_actual)):
-    """
-    Devuelve la estructura completa del Árbol Tecnológico y el listado de precios.
-    Ideal para que el Frontend dibuje la tienda dinámicamente.
-    """
-    return {
-        "mensaje": "Árbol tecnológico recuperado con éxito",
-        "arbol": ARBOL_TECNOLOGICO,
-        "precios": PRECIOS_TECNOLOGIA
-    }
+@router.get("/{partida_id}/tecnologias", response_model=TecnologiasPartidaOut)
+async def obtener_tecnologias_partida(
+    partida_id: int,
+    usuario_actual: User = Depends(obtener_usuario_actual),
+    db: AsyncSession = Depends(get_db)
+):
+    estado = await crud_partidas.obtener_estado_partida(db, partida_id)
+    if not estado:
+        raise HTTPException(404, "Partida no encontrada o aún no iniciada.")
+    
+    jugador_id  = usuario_actual.username
+    jugador = estado.jugadores.get(jugador_id)
+    if not jugador:
+        raise HTTPException(404, "Jugador no encontrado en esta partida.")
+
+    predesbloqueadas = jugador.get("tecnologias_predesbloqueadas", [])
+    compradas = jugador.get("tecnologias_compradas", [])
+
+    resultado: dict[str, list] = {}
+    for habilidad_id, nodo in ARBOL_TECNOLOGICO.items():
+        info = HABILIDADES[habilidad_id]
+        rama = info["rama"]
+        if rama not in resultado:
+            resultado[rama] = []
+        resultado[rama].append(HabilidadOut(
+            id=habilidad_id,
+            nombre=info["nombre"],
+            descripcion=info["descripcion"],
+            nivel=info["nivel"],
+            prerequisito=nodo["prerequisito"],
+            desbloquea=nodo["desbloquea"],
+            precio=info["precio"],
+            predesbloqueada=habilidad_id in predesbloqueadas,
+            comprada=habilidad_id in compradas,
+        ))
+
+    return TecnologiasPartidaOut(ramas=resultado)

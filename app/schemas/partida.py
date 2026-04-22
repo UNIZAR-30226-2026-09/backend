@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Union
 from datetime import datetime
 
 # Nos traemos las opciones fijas (Enums) que hicieron los compis
@@ -104,7 +104,21 @@ class AsignarTrabajoIn(BaseModel):
 
 class AsignarInvestigacionIn(BaseModel):
     territorio_id: str
-    rama: str = Field(pattern="^(biologica|logistica|artilleria)$")
+    habilidad_id: str
 
 class ComprarTecnologiaIn(BaseModel):
     tecnologia_id: str
+
+class HabilidadOut(BaseModel):
+    id: str
+    nombre: str
+    descripcion: str
+    nivel: int
+    prerequisito: Optional[Union[str, List[str]]]
+    desbloquea: List[str]
+    precio: int
+    predesbloqueada: bool
+    comprada: bool
+
+class TecnologiasPartidaOut(BaseModel):
+    ramas: Dict[str, List[HabilidadOut]]

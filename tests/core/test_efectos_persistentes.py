@@ -19,11 +19,10 @@ class MockEstado:
                 "efectos": [], 
                 "monedas": 1000,
                 "tropas_reserva": 0,
-                "nivel_ramas": {},
                 "tecnologias_predesbloqueadas": [],
                 "territorio_trabajando": None,
                 "territorio_investigando": None,
-                "rama_investigando": None
+                "habilidad_investigando": None
             },
             "jugador2": {
                 "tecnologias_compradas": [], 

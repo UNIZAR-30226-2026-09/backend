@@ -4,7 +4,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.crud.crud_partidas import obtener_estado_partida
 from app.crud.crud_combates import guardar_estado_partida
 from app.core.logica_juego.maquina_estados import resolver_gestion_ronda
-from app.core.logica_juego.constantes import PRECIOS_TECNOLOGIA
+from app.core.logica_juego.constantes import HABILIDADES
+from app.core.logica_juego.config_ataques_especiales import TipoAtaque
 from app.models.usuario import User
 from app.models.partida import Partida, EstadoPartida, FasePartida
 
@@ -39,8 +40,7 @@ async def test_fase_gestion_completa(db: AsyncSession):
                 "monedas": 0,
                 "territorio_trabajando": None,
                 "territorio_investigando": None,
-                "rama_investigando": None,
-                "nivel_ramas": {"biologica": 0, "logistica": 0, "artilleria": 0},
+                "habilidad_investigando": None,
                 "tecnologias_predesbloqueadas": [],
                 "tecnologias_compradas": []
             }
@@ -60,7 +60,7 @@ async def test_fase_gestion_completa(db: AsyncSession):
 
     estado_db.mapa["zaragoza"]["estado_bloqueo"] = "investigando"
     estado_db.jugadores["cientifico_loco"]["territorio_investigando"] = "zaragoza"
-    estado_db.jugadores["cientifico_loco"]["rama_investigando"] = "artilleria"
+    estado_db.jugadores["cientifico_loco"]["habilidad_investigando"] = TipoAtaque.MORTERO_TACTICO
 
     await guardar_estado_partida(db, estado_db)
 
@@ -78,23 +78,22 @@ async def test_fase_gestion_completa(db: AsyncSession):
     assert estado_actualizado.mapa["huesca"]["estado_bloqueo"] is None, "Huesca debería estar libre"
 
     # Verificamos Ciencia
-    assert jugador["nivel_ramas"]["artilleria"] == 1, "Debería haber subido al Nivel 1 de artillería"
-    assert "mortero_tactico" in jugador["tecnologias_predesbloqueadas"], "Mortero predesbloqueado"
+    assert TipoAtaque.MORTERO_TACTICO in jugador["tecnologias_predesbloqueadas"], "Mortero predesbloqueado"
     assert estado_actualizado.mapa["zaragoza"]["estado_bloqueo"] is None, "Zaragoza debería estar libre"
     print("\n✅ Parte 1: Resolución de Trabajo e Investigación perfecta.")
 
     # -------------------------------------------------------------------
     # 4. COMPRAS: ADQUIRIR TECNOLOGÍA
     # -------------------------------------------------------------------
-    precio_mortero = PRECIOS_TECNOLOGIA["mortero_tactico"]
+    precio_mortero = HABILIDADES[TipoAtaque.MORTERO_TACTICO]["precio"]
     
     jugador["monedas"] -= precio_mortero
-    jugador["tecnologias_compradas"].append("mortero_tactico")
+    jugador["tecnologias_compradas"].append(TipoAtaque.MORTERO_TACTICO)
     await guardar_estado_partida(db, estado_actualizado)
 
     estado_final = await obtener_estado_partida(db, 99)
     jug_final = estado_final.jugadores["cientifico_loco"]
 
     assert jug_final["monedas"] == 500, "Deberían quedar 500 monedas (1000 - 500)"
-    assert "mortero_tactico" in jug_final["tecnologias_compradas"], "Compra registrada en la BD"
+    assert TipoAtaque.MORTERO_TACTICO in jug_final["tecnologias_compradas"], "Compra registrada en la BD"
     print("✅ Parte 2: Compra de tecnología validada con éxito.")

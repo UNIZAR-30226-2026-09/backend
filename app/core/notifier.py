@@ -120,7 +120,7 @@ class GameNotifier:
         }, partida_id)
 
     @staticmethod
-    async def enviar_investigacion_completada(partida_id: int, usuario_id: str, rama: str, nuevo_nivel: int, territorio_id: str, techs_desbloqueadas: list):
+    async def enviar_investigacion_completada(partida_id: int, usuario_id: str, rama: str, nivel: int, territorio_id: str, habilidades_desbloqueadas: list, habilidades_siguientes: list):
         """
         Notifica que una investigación ha tenido éxito y se han desbloqueado tecnologías.
         """
@@ -128,10 +128,11 @@ class GameNotifier:
             "tipo_evento": "INVESTIGACION_COMPLETADA",
             "usuario_id": usuario_id,
             "rama": rama,
-            "nivel": nuevo_nivel,
+            "nivel": nivel,
             "territorio_id": territorio_id,
-            "nuevas_tecnologias": techs_desbloqueadas,
-            "mensaje": f"Investigación en {rama} (Nivel {nuevo_nivel}) completada en {territorio_id}."
+            "habilidades_desbloqueadas": habilidades_desbloqueadas,
+            "habilidades_siguientes": habilidades_siguientes,
+            "mensaje": f"Investigación completada en {territorio_id}. Habilidad: {habilidades_desbloqueadas}."
         }, partida_id)
 
     @staticmethod
