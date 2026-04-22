@@ -134,7 +134,12 @@ def validar_fortificacion(
 
     validar_tropas(tropas_a_mover, t_origen.units)
     
+    if t_origen.estado_bloqueo is not None:
+        raise ValueError("No puedes mover tropas desde un territorio que está trabajando o investigando.")
 
+    if t_destino.estado_bloqueo is not None:
+        raise ValueError("No puedes mover tropas hacia un territorio que está trabajando o investigando.")
+    
     return True
 
 def validar_fase_gestion(estado_partida, jugador_id: str):

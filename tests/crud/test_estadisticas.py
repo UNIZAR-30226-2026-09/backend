@@ -60,7 +60,7 @@ async def test_estadisticas_calculos_y_ranking(db: AsyncSession):
     pro_schema = EstadisticaRead.model_validate(stats_pro)
     
     assert pro_schema.winrate == 75.0
-    assert pro_schema.region_favorita == "Zaragoza"
+    assert pro_schema.region_mas_conquistada == "Zaragoza"
     assert pro_schema.num_soldados_matados == 100
     assert pro_schema.conquistas_por_region["Zaragoza"] == 5
 
@@ -68,7 +68,7 @@ async def test_estadisticas_calculos_y_ranking(db: AsyncSession):
     novato_schema = EstadisticaRead.model_validate(stats_novato)
     
     assert novato_schema.winrate == 0.0
-    assert novato_schema.region_favorita is None
+    assert novato_schema.region_mas_conquistada is None
 
     # ---------------------------------------------------------
     # 4. VERIFICAR EL RANKING GLOBAL
