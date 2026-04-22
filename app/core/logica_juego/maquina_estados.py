@@ -68,11 +68,11 @@ async def avanzar_fase(
 
         await procesar_efectos_inicio_turno(estado, estado.user_turno_actual)  
 
+        # Verificamos fin de investigacion / trabajo en el inicio del turno
+        await resolver_gestion_ronda(estado, estado.user_turno_actual)
+
         await asignar_tropas_reserva(estado, db)
     
-    elif nueva_fase == FasePartida.GESTION:
-        # Se re suelve para el jugador que tiene el turno actualmente
-        await resolver_gestion_ronda(estado, estado.user_turno_actual)
     
     
     # Actualizamos fase y tiempo límite
