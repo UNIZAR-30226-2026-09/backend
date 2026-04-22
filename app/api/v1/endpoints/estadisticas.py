@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
-from app.schemas.usuario import EstadisticaRead
+from app.schemas.usuario import EstadisticaRead, RankingItemOut
 from app.crud import crud_estadisticas
 from app.api.deps import obtener_usuario_actual
 from app.models.usuario import User
@@ -11,7 +11,7 @@ router = APIRouter()
 # ----------------------------------------------------------------------------
 # 1. OBTENER RANKING GLOBAL
 # ----------------------------------------------------------------------------
-@router.get("/ranking", response_model=list[EstadisticaRead])
+@router.get("/ranking", response_model=list[RankingItemOut])
 async def obtener_ranking(
     limite: int = 10,
     db: AsyncSession = Depends(get_db)

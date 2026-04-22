@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
+from pydantic import computed_field, BaseModel, EmailStr, Field, ConfigDict
 from typing import Optional
 from app.models.usuario import EstadoAmistad # Pillamos el enum directamente del modelo
 
@@ -27,32 +27,36 @@ class UserUpdate(BaseModel):
 # ESTADÍSTICAS
  
 class EstadisticaRead(BaseModel):
-    # Solo lectura, esto se actualiza internamente en el backend tras cada partida
     nombre_user: str
     num_partidas_jugadas: int
     num_partidas_ganadas: int
     num_continentes_conquistados: int
     num_regiones_conquistadas: int
     num_soldados_matados: int
-    conquistas_por_region: dict
+    conquistas_por_region: dict  = Field(exclude=True)
 
+    @computed_field
     @property
     def winrate(self) -> float:
         if self.num_partidas_jugadas == 0:
             return 0.0
         return round((self.num_partidas_ganadas / self.num_partidas_jugadas) * 100, 2)
 
-    model_config = ConfigDict(from_attributes=True)
 
+    @computed_field
     @property
-    def region_favorita(self) -> str | None:
+    def region_mas_conquistada(self) -> str | None:
         if not self.conquistas_por_region:
             return None
         return max(self.conquistas_por_region, key=self.conquistas_por_region.get)
 
     model_config = ConfigDict(from_attributes=True)
 
-    
+class RankingItemOut(BaseModel):
+    nombre_user: str
+    num_partidas_ganadas: int
+
+    model_config = ConfigDict(from_attributes=True)
 
  
 # AMISTADES

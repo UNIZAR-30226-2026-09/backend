@@ -7,7 +7,7 @@ from app.models.usuario import User
 from app.schemas.usuario import UserCreate, UserRead, Token, UserUpdate, EstadisticaRead
 from app.core.security import get_password_hash, verify_password, create_access_token
 from app.api.deps import obtener_usuario_actual
-from app.crud import crud_usuario
+from app.crud import crud_usuario, crud_estadisticas
 
 router = APIRouter()
 
@@ -36,7 +36,9 @@ async def registrar_usuario(usuario_in: UserCreate, db: AsyncSession = Depends(g
     contra_hasheada = get_password_hash(usuario_in.password)
 
     nuevo_usuario = await crud_usuario.crear_usuario(db, usuario_in, contra_hasheada)
-
+    
+    await crud_estadisticas.inicializar_estadisticas(db, usuario_in.username)
+    
     return nuevo_usuario
 
 
@@ -95,17 +97,5 @@ async def actualizar_perfil_actual(
     - **db**: Sesión de base de datos asíncrona.
     
     Retorna el perfil del usuario actualizado.
-    """
-    raise HTTPException(status_code=501, detail="No implementado")
-
-@router.get("/{user_id}/estadisticas", response_model=EstadisticaRead, status_code=status.HTTP_200_OK)
-async def obtener_estadisticas_usuario(user_id: int, db: AsyncSession = Depends(get_db)):
-    """
-    Devuelve estadísticas globales de un jugador.
-
-    - **user_id**: Identificador numérico único del usuario a consultar.
-    - **db**: Sesión de base de datos asíncrona.
-    
-    Retorna el objeto con los datos estadísticos del usuario.
     """
     raise HTTPException(status_code=501, detail="No implementado")

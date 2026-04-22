@@ -478,6 +478,8 @@ async def comprar_tecnologia(partida_id: int, datos: ComprarTecnologiaIn, usuari
         raise HTTPException(400, "Solo puedes comprar tecnologías en la fase de gestión.")
 
     tech_id = datos.tecnologia_id
+    if tech_id not in HABILIDADES:
+        raise HTTPException(400, f"La tecnología '{tech_id}' no existe.")
 
     # Validaciones de compra
     if tech_id not in jugador.get("tecnologias_predesbloqueadas", []):
