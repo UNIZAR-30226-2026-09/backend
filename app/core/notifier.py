@@ -32,6 +32,13 @@ class GameNotifier:
         }, partida_id)
 
     @staticmethod
+    async def notificar_sala_cerrada(partida_id: int):
+        await manager.broadcast({
+            "tipo_evento": "SALA_CERRADA",
+            "mensaje": "El host ha abandonado la sala. La partida ha sido cancelada."
+        }, partida_id)
+
+    @staticmethod
     async def notificar_nuevo_jugador(partida_id: int, username: str):
         await manager.broadcast({
             "tipo_evento": "NUEVO_JUGADOR",

@@ -349,3 +349,11 @@ async def actualizar_creador_partida(
     """
     partida.creador = nuevo_creador_username
     await db.commit()
+
+
+# ----------------------------------------------------------------------------
+# 13. ELIMINAR PARTIDA
+# ----------------------------------------------------------------------------
+async def eliminar_partida(db: AsyncSession, partida_id: int) -> None:
+    await db.execute(delete(Partida).where(Partida.id == partida_id))
+    await db.commit()

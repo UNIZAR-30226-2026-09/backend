@@ -161,6 +161,17 @@ Para establecer la conexión, el cliente debe abrir un socket hacia la siguiente
     }
     ```
 
+### 3.7. Sala Cerrada
+* **Dirección:** Servidor -> Todos los Clientes (Broadcast)
+* **Descripción:** Se emite cuando el host abandona el lobby. Todos los jugadores deben volver a la pantalla principal.
+* **Payload recibido:**
+    ```json
+    {
+        "tipo_evento": "SALA_CERRADA",
+        "mensaje": "El host ha abandonado la sala. La partida ha sido cancelada."
+    }
+    ```
+
 ---
 
 ## 4. SISTEMA DE PRESENCIA Y AMIGOS (Canal Global)

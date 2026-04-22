@@ -175,9 +175,14 @@ async def abandonar_partida(
 
     await crud_partidas.eliminar_jugador(db, partida_id, usuario_actual.username)
 
-    await notifier.notificar_desconexion(partida_id, usuario_actual.username)
-
-    return AbandonarOut(mensaje="Has abandonado la partida")
+    # Si el host se va, cerramos la sala
+    if partida.creador == usuario_actual.username:
+        await notifier.notificar_sala_cerrada(partida_id)
+        await crud_partidas.eliminar_partida(db, partida_id)
+        return AbandonarOut(mensaje="Has abandonado la partida. La sala ha sido cerrada.")
+    else:
+        await notifier.notificar_desconexion(partida_id, usuario_actual.username)
+        return AbandonarOut(mensaje="Has abandonado la partida")
 
 
 @router.post("/{partida_id}/empezar", response_model=EmpezarPartidaOut, status_code=status.HTTP_200_OK)
