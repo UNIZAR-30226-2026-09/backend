@@ -479,8 +479,8 @@ async def comprar_tecnologia(partida_id: int, datos: ComprarTecnologiaIn, usuari
     if not jugador:
         raise HTTPException(404, "Jugador no encontrado")
 
-    if estado.fase_actual.value != "gestion":
-        raise HTTPException(400, "Solo puedes comprar tecnologías en la fase de gestión.")
+    if estado.fase_actual.value != "ataque_especial":
+        raise HTTPException(400, "Solo puedes comprar tecnologías en la fase de ataque especial.")
 
     tech_id = datos.tecnologia_id
     if tech_id not in HABILIDADES:
