@@ -211,7 +211,8 @@ async def asignar_tropas_reserva(estado: EstadoPartida, db: AsyncSession) -> int
         # Verificamos si el jugador posee todas las comarcas de esta región
         if all(territorio in set_territorios_propios for territorio in lista_comarcas_region):
             
-            bonus = len(lista_comarcas_region)
+            bonus = datos_region.get("bonus_troops", 0) if isinstance(datos_region, dict) else getattr(datos_region, "bonus_troops", 0)
+
             bonus_regiones += bonus
             
     # Añadimos el bonus al total de tropas base
