@@ -36,14 +36,15 @@ async def test_asignar_tropas_reserva_bonus_regiones():
     # 2. SIMULAR EL MAPA DE ARAGÓN (MOCKS)
     # ---------------------------------------------------------
     class RegionMock:
-        def __init__(self, name, comarcas):
+        def __init__(self, name, comarcas, bonus_troops=0):
             self.name = name
             self.comarcas = comarcas
+            self.bonus_troops = bonus_troops
 
     regiones_falsas = {
-        "region_a": RegionMock("Región A", ["T1", "T2"]),
+        "region_a": RegionMock("Región A", ["T1", "T2"], bonus_troops=2),
         
-        "region_b": RegionMock("Región B", ["T3", "T4"])
+        "region_b": RegionMock("Región B", ["T3", "T4"], bonus_troops=3)
     }
 
     # ---------------------------------------------------------

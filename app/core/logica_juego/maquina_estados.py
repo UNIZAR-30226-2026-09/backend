@@ -168,9 +168,9 @@ async def calcular_siguiente_jugador(partida_id: int, jugador_actual: str, db: A
 async def asignar_tropas_reserva(estado: EstadoPartida, db: AsyncSession) -> int:
     """
     Calcula y asigna las tropas de refuerzo a un jugador basándose en sus territorios.
-    Reglas: 
+    Reglas:
     - Base: territorios / 3 (mínimo 3).
-    - Bonus: +1 por cada territorio de una comarca si se posee entera.
+    - Bonus: Según el valor 'bonus_troops' definido en cada región si se posee entera.
     """
     jugador_id = estado.user_turno_actual
     estado.jugadores[jugador_id]["ha_fortificado"] = False

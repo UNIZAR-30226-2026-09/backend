@@ -305,6 +305,9 @@ async def ejecutar_ataque_especial(
     except ValueError as e:
         raise HTTPException(400, str(e))
 
+    # Ya no puedes volver a usar la tecnologia hasta que no la compres otra vez
+    jugador["tecnologias_compradas"].remove(ataque_in.tipo_ataque)
+
     flag_modified(estado_partida, "mapa")
     flag_modified(estado_partida, "jugadores")
     await crud_combates.guardar_estado_partida(db, estado_partida)

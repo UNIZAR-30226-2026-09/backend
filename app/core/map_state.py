@@ -46,6 +46,8 @@ class MapGraph:
 
     def calcular_distancia(self, origen: str, destino: str) -> int:
         """Calcula los saltos entre dos comarcas (útil para guerra tecnológica/misiles)."""
+        if not origen or not destino:
+            return -1
         try:
             return nx.shortest_path_length(self.graph, source=origen, target=destino)
         except (nx.NetworkXNoPath, nx.NodeNotFound):
