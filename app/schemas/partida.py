@@ -119,6 +119,7 @@ class HabilidadOut(BaseModel):
     precio: int
     predesbloqueada: bool
     comprada: bool
+    rango: Optional[int] = None
 
 class TecnologiasPartidaOut(BaseModel):
     ramas: Dict[str, List[HabilidadOut]]

@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 from app.core.map_state import map_calculator
 from app.core.logica_juego.validaciones import validar_fortificacion, validar_asignar_trabajo, validar_asignar_investigacion
 from app.core.logica_juego.constantes import HABILIDADES, ARBOL_TECNOLOGICO
+from app.core.logica_juego.config_ataques_especiales import CONFIG_ATAQUES
 from app.core.logica_juego.combate import resolver_fortificacion
 from app.core.logica_juego.utils import obtener_datos_territorio
 from app.schemas.estado_juego import TerritorioBase
@@ -533,6 +534,7 @@ async def obtener_tecnologias_partida(
         rama = info["rama"]
         if rama not in resultado:
             resultado[rama] = []
+        cfg_ataque = CONFIG_ATAQUES.get(habilidad_id, {})
         resultado[rama].append(HabilidadOut(
             id=habilidad_id,
             nombre=info["nombre"],
@@ -543,6 +545,7 @@ async def obtener_tecnologias_partida(
             precio=info["precio"],
             predesbloqueada=habilidad_id in predesbloqueadas,
             comprada=habilidad_id in compradas,
+            rango=cfg_ataque.get("rango"),
         ))
 
     return TecnologiasPartidaOut(ramas=resultado)
