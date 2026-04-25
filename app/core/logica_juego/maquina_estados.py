@@ -174,6 +174,7 @@ async def asignar_tropas_reserva(estado: EstadoPartida, db: AsyncSession) -> int
     """
     jugador_id = estado.user_turno_actual
     estado.jugadores[jugador_id]["ha_fortificado"] = False
+    estado.jugadores[jugador_id]["ha_lanzado_especial"] = False
 
     jugador = estado.jugadores.get(jugador_id, {})
 

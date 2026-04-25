@@ -299,6 +299,10 @@ async def ejecutar_ataque_especial(
     if not funcion_ataque:
         raise HTTPException(400, "Arma o tecnología desconocida")
 
+    if jugador.get("ha_lanzado_especial", False):
+        raise HTTPException(
+            status_code=400, detail="Solo puedes realizar un ataque especial por turno.")
+
     try:
         # Ejecutamos el ataque
         resultado_accion = funcion_ataque(estado_partida, atacante_id, ataque_in.origen, ataque_in.destino)
@@ -307,7 +311,7 @@ async def ejecutar_ataque_especial(
 
     # Ya no puedes volver a usar la tecnologia hasta que no la compres otra vez
     jugador["tecnologias_compradas"].remove(ataque_in.tipo_ataque)
-
+    jugador["ha_lanzado_especial"] = True
     flag_modified(estado_partida, "mapa")
     flag_modified(estado_partida, "jugadores")
     await crud_combates.guardar_estado_partida(db, estado_partida)

@@ -93,3 +93,36 @@ def test_ejecutar_ataque_especial_fuera_de_turno(client, mock_user):
             assert "fuera de tu turno" in response.json()["detail"]
     finally:
         app.dependency_overrides.pop(obtener_usuario_actual, None)
+
+
+def test_ejecutar_ataque_especial_ya_usado(client, mock_user):
+    # Sobrescribimos el usuario actual
+    app.dependency_overrides[obtener_usuario_actual] = lambda: mock_user
+
+    mock_estado = MagicMock()
+    mock_estado.user_turno_actual = "testuser"
+    mock_estado.jugadores = {
+        "testuser": {
+            "tecnologias_compradas": [TipoAtaque.MORTERO_TACTICO],
+            "ha_lanzado_especial": True 
+        }
+    }
+
+    try:
+        with patch("app.api.v1.endpoints.combates.obtener_estado_partida", return_value=mock_estado):
+            payload = {
+                "tipo_ataque": TipoAtaque.MORTERO_TACTICO,
+                "origen": "T1",
+                "destino": "T2"
+            }
+            response = client.post(
+                "/api/v1/partidas/1/ataque_especial",
+                json=payload
+            )
+
+            # Comprobamos que el servidor nos para los pies
+            assert response.status_code == 400
+            assert "Solo puedes realizar un ataque especial por turno" in response.json()["detail"]
+            
+    finally:
+        app.dependency_overrides.pop(obtener_usuario_actual, None)

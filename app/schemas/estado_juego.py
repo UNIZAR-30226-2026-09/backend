@@ -31,3 +31,5 @@ class JugadorBase(BaseModel):
     bajas_causadas: int = Field(default=0)
     historial_conquistas: Dict[str, int] = Field(default_factory=dict)
     efectos: List[EfectoActivo] = Field(default_factory=list)
+
+    ha_lanzado_especial: bool = Field(default=False)
