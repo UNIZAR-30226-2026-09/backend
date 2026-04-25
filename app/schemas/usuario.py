@@ -77,6 +77,11 @@ class AmistadRead(BaseModel):
 class AmistadUpdate(BaseModel):
     estado: EstadoAmistad
 
+
+class AmigoActivoRead(BaseModel):
+    username: str
+    estado_conexion: str # "EN_PARTIDA", "CONECTADO", "DESCONECTADO"
+
 # TOKENS VIP (JWT)
 
 class Token(BaseModel):

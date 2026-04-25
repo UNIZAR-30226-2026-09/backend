@@ -1,7 +1,6 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from app.models.usuario import User, Amistad, EstadoAmistad
+from app.models.usuario import User, EstadoAmistad
 from app.crud import crud_amigos
 from app.core.ws_manager import manager
 
@@ -40,7 +39,7 @@ async def test_flujo_completo_amistad_y_presencia(db: AsyncSession):
 
     # -------------------------------------------------------------------
     # 4. TEST DE PRESENCIA (WEBSOCKETS)
-    # Simulamos que Messi se conecta y Cristiano debería recibir el aviso
+    # Simulamos que Cristiano está en el menú (Global) y le llega un aviso
     # -------------------------------------------------------------------
     class MockWebSocket:
         def __init__(self):
@@ -48,14 +47,13 @@ async def test_flujo_completo_amistad_y_presencia(db: AsyncSession):
         async def send_json(self, data):
             self.sent_messages.append(data)
         async def accept(self): pass
+        async def close(self, code=1000): pass
 
     ws_cristiano = MockWebSocket()
-    # Simulamos que Cristiano ya está online en el canal global
     await manager.connect_global(ws_cristiano, "Cristiano")
 
-    # Acción: Messi entra al juego (esto es lo que hace tu endpoint global)
-    amigos_de_messi = await crud_amigos.obtener_nombres_amigos(db, "Messi")
-    for amigo in amigos_de_messi:
+    # Acción manual: Aviso a los amigos
+    for amigo in amigos_messi:
         if amigo in manager.global_connections:
             await manager.global_connections[amigo].send_json({
                 "tipo_evento": "PRESENCIA",
@@ -63,7 +61,6 @@ async def test_flujo_completo_amistad_y_presencia(db: AsyncSession):
                 "estado": "online"
             })
 
-    # Verificamos si a Cristiano le ha llegado el mensaje
     assert len(ws_cristiano.sent_messages) > 0
     notificacion = ws_cristiano.sent_messages[0]
     assert notificacion["username"] == "Messi"
@@ -71,8 +68,33 @@ async def test_flujo_completo_amistad_y_presencia(db: AsyncSession):
     print("✅ Sistema de Presencia: Cristiano ha recibido el aviso 'online' de Messi.")
 
     # -------------------------------------------------------------------
-    # 5. ELIMINAR AMIGO
-    # Messi elimina a Cristiano (se acabó la rivalidad)
+    # 4.5 TEST DEL RADAR DE AMIGOS ACTIVOS (ISSUE 4)
+    # -------------------------------------------------------------------
+    ws_messi = MockWebSocket()
+    # Conectamos a Messi a la partida 1
+    await manager.connect(ws_messi, id_partida=1, username="Messi")
+
+    # 1. Comprobamos los estados directamente en el manager
+    assert manager.obtener_estado_conexion("Cristiano") == "CONECTADO"
+    assert manager.obtener_estado_conexion("Messi") == "EN_PARTIDA"
+    
+    # 2. Simulamos la fusión del endpoint para Cristiano
+    amigos_cr7 = await crud_amigos.obtener_nombres_amigos(db, "Cristiano")
+    amigos_activos_cr7 = []
+    
+    for amigo in amigos_cr7:
+        amigos_activos_cr7.append({
+            "username": amigo,
+            "estado_conexion": manager.obtener_estado_conexion(amigo)
+        })
+
+    assert len(amigos_activos_cr7) == 1
+    assert amigos_activos_cr7[0]["username"] == "Messi"
+    assert amigos_activos_cr7[0]["estado_conexion"] == "EN_PARTIDA"
+    print("✅ Radar Issue 4: Cristiano ve correctamente que Messi está EN_PARTIDA.")
+
+    # -------------------------------------------------------------------
+    # 5. ELIMINAR AMIGO Y LIMPIAR CONEXIONES
     # -------------------------------------------------------------------
     amistad_obj = await crud_amigos.obtener_relacion_existente(db, "Messi", "Cristiano")
     await crud_amigos.eliminar_amigo(db, amistad_obj)
@@ -81,5 +103,6 @@ async def test_flujo_completo_amistad_y_presencia(db: AsyncSession):
     assert "Cristiano" not in final_amigos
     print("✅ Amigo eliminado correctamente. Lista limpia.")
 
-    # Limpiamos manager para otros tests
+    # Limpiamos los diccionarios del manager para que no interfieran en futuros tests
     manager.disconnect_global("Cristiano")
+    manager.disconnect(id_partida=1, username="Messi")

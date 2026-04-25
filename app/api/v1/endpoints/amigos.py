@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.schemas.usuario import UserRead, AmistadCreate, AmistadRead, AmistadUpdate
+from app.schemas.usuario import UserRead, AmistadCreate, AmistadRead, AmistadUpdate, AmigoActivoRead
 from app.models.usuario import User, Amistad, EstadoAmistad
 from app.api.deps import obtener_usuario_actual
 from app.db.session import get_db
@@ -154,3 +154,32 @@ async def eliminar_amigo(
 
     await crud_amigos.eliminar_amigo(db, amistad)
     return None
+
+@router.get("/activos", response_model=list[AmigoActivoRead])
+async def listar_amigos_activos(
+    usuario_actual: User = Depends(obtener_usuario_actual),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Devuelve la lista de amigos aceptados junto con su estado de conexión en tiempo real
+    (EN_PARTIDA, CONECTADO, DESCONECTADO).
+    """
+    # Obtenemos la lista base de amigos (los que están ACEPTADOS)
+    amigos_db = await crud_amigos.obtener_lista_amigos(db, usuario_actual.username)
+    
+    amigos_activos = []
+    
+    # Iteramos sobre las amistades para sacar el nombre del amigo
+    for relacion in amigos_db:
+        nombre_amigo = relacion.user_2 if relacion.user_1 == usuario_actual.username else relacion.user_1
+        
+        estado = manager.obtener_estado_conexion(nombre_amigo)
+        
+        amigos_activos.append(
+            AmigoActivoRead(
+                username=nombre_amigo,
+                estado_conexion=estado
+            )
+        )
+        
+    return amigos_activos

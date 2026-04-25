@@ -92,4 +92,27 @@ class ConnectionManager:
         if username in self.global_connections:
             del self.global_connections[username]
 
+    def obtener_estado_conexion(self, username: str) -> str:
+        """
+        Rastrea al usuario en los diccionarios del servidor.
+        Retorna: 'EN_PARTIDA', 'CONECTADO' o 'DESCONECTADO'
+        """
+        for id_partida, jugadores in self.active_connections.items():
+            if username in jugadores: 
+                return "EN_PARTIDA"
+                
+        if username in self.global_connections:
+            return "CONECTADO"
+            
+        return "DESCONECTADO"
+    
+    async def notificar_usuario_global(self, username: str, mensaje: dict):
+        """Envía un mensaje a un usuario a través de su conexión global."""
+        if username in self.global_connections:
+            websocket = self.global_connections[username]
+            try:
+                await websocket.send_json(mensaje)
+            except Exception as e:
+                print(f"[WS] Error notificando a {username} globalmente: {e}")
+
 manager = ConnectionManager()
