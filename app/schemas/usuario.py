@@ -55,6 +55,15 @@ class EstadisticaRead(BaseModel):
 class RankingItemOut(BaseModel):
     nombre_user: str
     num_partidas_ganadas: int
+    num_partidas_jugadas: int 
+    num_soldados_matados: int
+
+    @computed_field
+    @property
+    def winrate(self) -> float:
+        if self.num_partidas_jugadas == 0:
+            return 0.0
+        return round((self.num_partidas_ganadas / self.num_partidas_jugadas) * 100, 2)
 
     model_config = ConfigDict(from_attributes=True)
 

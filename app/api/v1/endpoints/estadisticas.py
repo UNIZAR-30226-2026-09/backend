@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.schemas.usuario import EstadisticaRead, RankingItemOut
@@ -18,6 +18,9 @@ async def obtener_ranking(
 ):
     """
     Devuelve el Top X de jugadores ordenados por victorias y soldados eliminados.
+    
+    El desempate se realiza por el número de soldados matados (el más letal gana).
+    Pydantic calculará automáticamente el 'winrate' de cada jugador.
     """
     ranking = await crud_estadisticas.obtener_ranking_global(db, limite=limite)
     return ranking
@@ -32,10 +35,11 @@ async def obtener_mis_estadisticas(
 ):
     """
     Devuelve las estadísticas detalladas del usuario que hace la petición.
+    Incluye campos calculados como la región más conquistada y el winrate.
     """
     stats = await crud_estadisticas.obtener_estadisticas(db, usuario_actual.username)
     if not stats:
-        # Si por alguna razón no existen, las inicializamos al vuelo
+        # Inicialización automática si es la primera vez que consulta
         stats = await crud_estadisticas.inicializar_estadisticas(db, usuario_actual.username)
     return stats
 
@@ -48,9 +52,12 @@ async def obtener_estadisticas_usuario(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Permite consultar el perfil de estadísticas de cualquier jugador.
+    Permite consultar el perfil de estadísticas de cualquier jugador por su nombre.
     """
     stats = await crud_estadisticas.obtener_estadisticas(db, username)
     if not stats:
-        raise HTTPException(status_code=404, detail="Estadísticas no encontradas para este usuario")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, 
+            detail=f"Estadísticas no encontradas para el usuario '{username}'"
+        )
     return stats
