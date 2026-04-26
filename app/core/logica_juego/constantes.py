@@ -159,3 +159,30 @@ ARBOL_TECNOLOGICO = {
         "desbloquea": []
     }
 }
+
+AVATARES_PERMITIDOS = [
+    "1.png",
+    "2.png",
+    "3.png",
+    "4.png",
+    "5.png",
+    "6.png"
+]
+
+MENSAJES_CHAT_PERMITIDOS = [
+    "¡Buena jugada!",
+    "¡Maldición!",
+    "¿Hacemos una alianza?",
+    "¡A por él!",
+    "¡Me rindo!",
+    "Necesito refuerzos..."
+]
+
+REACCIONES_CHAT_PERMITIDAS = [
+    "1.png",
+    "2.png",
+    "3.png",
+    "4.png",
+    "5.png",
+    "6.png"  
+]

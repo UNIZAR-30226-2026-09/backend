@@ -8,6 +8,7 @@ from app.schemas.usuario import UserCreate, UserRead, Token, UserUpdate, Estadis
 from app.core.security import get_password_hash, verify_password, create_access_token
 from app.api.deps import obtener_usuario_actual
 from app.crud import crud_usuario, crud_estadisticas
+from app.core.logica_juego.constantes import AVATARES_PERMITIDOS
 
 router = APIRouter()
 
@@ -115,15 +116,6 @@ async def actualizar_perfil_actual(
     
     return usuario_actualizado
 
-
-AVATARES_PERMITIDOS = [
-    "1.png",
-    "2.png",
-    "3.png",
-    "4.png",
-    "5.png",
-    "6.png"
-]
 
 @router.put("/me/avatar", response_model=UserRead)
 async def cambiar_avatar_predefinido(

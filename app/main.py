@@ -21,6 +21,7 @@ app = FastAPI(
 # ARCHIVOS ESTÁTICOS
 # =============================================================================
 os.makedirs("app/static/perfiles", exist_ok=True)
+os.makedirs("app/static/reacciones", exist_ok=True) 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # =============================================================================

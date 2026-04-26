@@ -203,12 +203,14 @@ class GameNotifier:
 
 
     @staticmethod
-    async def enviar_chat(partida_id: int, emisor: str, mensaje: str):
-        """Difunde un mensaje de chat a toda la sala."""
+    async def enviar_chat(partida_id: int, emisor: str, tipo_chat: str, contenido: str, timestamp: str):
+        """Difunde un mensaje de chat o reacción a toda la sala."""
         await manager.broadcast({
             "tipo_evento": "CHAT", 
+            "tipo_chat": tipo_chat,
             "emisor": emisor,
-            "mensaje": mensaje
+            "contenido": contenido,
+            "timestamp": timestamp
         }, partida_id)
 
     @staticmethod
