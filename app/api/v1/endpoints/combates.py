@@ -60,8 +60,10 @@ async def ejecutar_ataque(
         )
     except ValueError as e:
         raise HTTPException(400, str(e))
-
+    
+    era_territorio_vacio = defensor_id == "neutral"
     resultado = resolver_ataque_completo(t_origen.units, t_destino.units)
+    resultado.territorio_vacio = era_territorio_vacio
 
     aplicar_resultado_combate(t_origen, t_destino, resultado)
 
@@ -128,41 +130,42 @@ async def ejecutar_ataque(
             },
         )
 
-        eliminado = await crud_combates.verificar_eliminacion_jugador(
-            db=db, 
-            partida_id=partida_id, 
-            defensor_id=defensor_id, 
-            mapa_actualizado=estado_partida.mapa
-        )
-
-        if eliminado:
-            await notifier.enviar_jugador_eliminado(partida_id, defensor_id)
-            
-            await registrar_log(
-                db=db,
-                partida_id=partida_id,
-                turno_numero=estado_partida.turno_actual,
-                fase=estado_partida.fase_actual.value,
-                tipo_evento="jugador_eliminado",
-                user=atacante_id,
-                datos={"eliminado": defensor_id},
+        if not era_territorio_vacio:
+            eliminado = await crud_combates.verificar_eliminacion_jugador(
+                db=db, 
+                partida_id=partida_id, 
+                defensor_id=defensor_id, 
+                mapa_actualizado=estado_partida.mapa
             )
-            
-            # Verificar si la partida ya ha terminado
-            ganador = await verificar_y_finalizar_partida(db, partida_id)
-            if ganador:
 
-                await notifier.enviar_fin_partida(partida_id, ganador)
+            if eliminado:
+                await notifier.enviar_jugador_eliminado(partida_id, defensor_id)
                 
                 await registrar_log(
                     db=db,
                     partida_id=partida_id,
                     turno_numero=estado_partida.turno_actual,
                     fase=estado_partida.fase_actual.value,
-                    tipo_evento="fin_partida",
-                    user=ganador,
-                    datos={"ganador": ganador},
+                    tipo_evento="jugador_eliminado",
+                    user=atacante_id,
+                    datos={"eliminado": defensor_id},
                 )
+                
+                # Verificar si la partida ya ha terminado
+                ganador = await verificar_y_finalizar_partida(db, partida_id)
+                if ganador:
+
+                    await notifier.enviar_fin_partida(partida_id, ganador)
+                    
+                    await registrar_log(
+                        db=db,
+                        partida_id=partida_id,
+                        turno_numero=estado_partida.turno_actual,
+                        fase=estado_partida.fase_actual.value,
+                        tipo_evento="fin_partida",
+                        user=ganador,
+                        datos={"ganador": ganador},
+                    )
 
 
     await notifier.enviar_resultado_ataque(
@@ -302,6 +305,8 @@ async def colocar_tropas_reserva(
         )
     except ValueError as e:
         raise HTTPException(400, str(e))
+    
+    es_conquista_neutral = t_destino.owner_id == "neutral"
 
     await resolver_colocacion_tropas(
         jugador_estado, 
@@ -311,6 +316,10 @@ async def colocar_tropas_reserva(
         jugadores_estado=estado_partida.jugadores,
         partida_id=partida_id
     )
+
+    if es_conquista_neutral:
+        t_destino.owner_id = jugador_id
+
     estado_partida.mapa[datos.territorio_id] = t_destino.model_dump()
     estado_partida.jugadores[jugador_id] = jugador_estado.model_dump()
     await crud_combates.guardar_estado_partida(db, estado_partida)
@@ -318,6 +327,13 @@ async def colocar_tropas_reserva(
     await notifier.enviar_tropas_colocadas(
         partida_id, jugador_id, datos.territorio_id, datos.tropas, t_destino.units
     )
+
+    if es_conquista_neutral:
+        await notifier.enviar_actualizacion_territorio(
+            partida_id=partida_id,
+            territorio_id=datos.territorio_id,
+            data_territorio=estado_partida.mapa[datos.territorio_id]
+        )
 
     return {
         "mensaje": f"Has metido {datos.tropas} soldados en {datos.territorio_id}",

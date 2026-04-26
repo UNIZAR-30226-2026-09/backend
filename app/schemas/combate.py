@@ -21,6 +21,7 @@ class ResultadoAtaqueCompleto(BaseModel):
     bajas_defensor: int
     tropas_restantes_origen: int
     tropas_restantes_defensor: int
+    territorio_vacio: bool = False
 
 class MovimientoConquistaCreate(BaseModel):
     tropas_a_mover: int = Field(ge=0, description="Número de tropas adicionales a mover")

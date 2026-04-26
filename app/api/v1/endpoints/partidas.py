@@ -404,8 +404,14 @@ async def fortificar_tropas(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+    es_conquista_neutral = estado.mapa[datos.destino].get("owner_id") == "neutral"
+
     resolver_fortificacion(estado.mapa, datos.origen, datos.destino, datos.tropas)
     
+    if es_conquista_neutral:
+        estado.mapa[datos.destino]["owner_id"] = usuario_actual.username
+        flag_modified(estado, "mapa")
+
     estado.jugadores[usuario_actual.username]["ha_fortificado"] = True
     flag_modified(estado, "jugadores")
     
@@ -418,6 +424,13 @@ async def fortificar_tropas(
         tropas=datos.tropas,
         jugador_id=usuario_actual.username
     )
+
+    if es_conquista_neutral:
+        await notifier.enviar_actualizacion_territorio(
+            partida_id=partida_id,
+            territorio_id=datos.destino,
+            data_territorio=estado.mapa[datos.destino]
+        )
 
     return {
         "mensaje": "Fortificación completada",

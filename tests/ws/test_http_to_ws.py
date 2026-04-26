@@ -191,8 +191,12 @@ async def test_http_ataque_emite_ws(monkeypatch):
         if _assert_tipo_evento(message, "ATAQUE_RESULTADO"):
             broadcast_payloads.append((message, id_partida))
 
+    async def fake_registrar_log(*args, **kwargs):
+        return None
+
     monkeypatch.setattr(combates_endpoint, "obtener_estado_partida", fake_obtener_estado_partida)
     monkeypatch.setattr(combates_endpoint.crud_combates, "guardar_estado_partida", fake_guardar_estado_partida)
+    monkeypatch.setattr(combates_endpoint, "registrar_log", fake_registrar_log)
     monkeypatch.setattr(combates_endpoint, "validar_ataque_convencional", fake_validar)
     monkeypatch.setattr(combates_endpoint, "resolver_ataque_completo", fake_resolver_ataque_completo)
     monkeypatch.setattr(manager, "broadcast", spy_broadcast)

@@ -91,19 +91,23 @@ def validar_colocacion_tropas(estado_partida, jugador_id: str, territorio_id: st
         raise ValueError("Ahora no toca poner tropas, estás en otra fase")
 
     # ¿El territorio es suyo?
-    if t_destino.owner_id != jugador_id:
+    if t_destino.owner_id != jugador_id and t_destino.owner_id != "neutral":
         raise ValueError("No puedes poner tropas en un territorio enemigo")
 
     # ¿Tiene pasta (tropas) suficiente?
     if tropas_reserva < tropas_a_poner:
         raise ValueError(f"Solo tienes {tropas_reserva} tropas de reserva")
     
-def validar_camino_aliado(origen: str, destino: str, owner_id: str, estado_mapa: dict, grafo_aragon):
+def validar_camino_aliado(origen: str, destino: str, owner_id: str, estado_mapa: dict, grafo_aragon, nodos_extra: list[str] | None = None):
     """
     Decide qué territorios son del jugador y le pregunta al motor si hay camino.
     """
     # Obtener nodos
     nodos_aliados = obtener_territorios_jugador(estado_mapa, owner_id)
+
+    # si hay territorios vacios (neutrales)
+    if nodos_extra:
+        nodos_aliados = list(set(nodos_aliados + nodos_extra))
 
     # Preguntar al grafo            
     if not grafo_aragon.existe_camino_restringido(origen, destino, nodos_aliados):
@@ -125,19 +129,25 @@ def validar_fortificacion(
     validar_fase(estado_partida.fase_actual, FasePartida.FORTIFICACION) 
 
     validar_propiedad_territorio(t_origen, jugador_id, "origen")
-    validar_propiedad_territorio(t_destino, jugador_id, "destino")
+    
+    es_neutral = t_destino.owner_id == "neutral"
+    if not es_neutral:
+        validar_propiedad_territorio(t_destino, jugador_id, "destino")
 
     if estado_partida.jugadores.get(jugador_id, {}).get("ha_fortificado", False):
         raise ValueError("Ya has realizado tu movimiento de fortificación este turno.")
 
-    validar_camino_aliado(origen_id, destino_id, jugador_id, estado_partida.mapa, grafo_aragon)
+    if es_neutral:
+        validar_camino_aliado(origen_id, destino_id, jugador_id, estado_partida.mapa, grafo_aragon, nodos_extra=[destino_id])
+    else:
+        validar_camino_aliado(origen_id, destino_id, jugador_id, estado_partida.mapa, grafo_aragon)
 
     validar_tropas(tropas_a_mover, t_origen.units)
     
     if t_origen.estado_bloqueo is not None:
         raise ValueError("No puedes mover tropas desde un territorio que está trabajando o investigando.")
 
-    if t_destino.estado_bloqueo is not None:
+    if not es_neutral and t_destino.estado_bloqueo is not None:
         raise ValueError("No puedes mover tropas hacia un territorio que está trabajando o investigando.")
     
     return True
