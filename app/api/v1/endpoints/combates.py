@@ -13,6 +13,7 @@ from app.schemas.combate import AtaqueCreate, ResultadoAtaqueCompleto, MoverConq
 from app.schemas.estado_juego import TerritorioBase, JugadorBase
 from app.crud import crud_combates
 from app.crud.crud_partidas import obtener_estado_partida, verificar_y_finalizar_partida
+from app.crud.crud_logs import registrar_log
 
 from app.core.logica_juego.validaciones import validar_colocacion_tropas
 from app.core.logica_juego.combate import resolver_colocacion_tropas, aplicar_resultado_combate, ejecutar_conquista, cobrar_incentivo_ataque
@@ -94,21 +95,75 @@ async def ejecutar_ataque(
     estado_partida.jugadores[atacante_id] = jugador_estado.model_dump()
 
     await crud_combates.guardar_estado_partida(db, estado_partida)
-    
+
+    await registrar_log(
+        db=db,
+        partida_id=partida_id,
+        turno_numero=estado_partida.turno_actual,
+        fase=estado_partida.fase_actual.value,
+        tipo_evento="ataque_convencional",
+        user=atacante_id,
+        datos={
+            "origen": ataque_in.territorio_origen_id,
+            "destino": ataque_in.territorio_destino_id,
+            "defensor": defensor_id,
+            "bajas_atacante": resultado.bajas_atacante,
+            "bajas_defensor": resultado.bajas_defensor,
+            "victoria": resultado.victoria_atacante,
+        },
+    )    
+
     if resultado.victoria_atacante:
+
+        await registrar_log(
+            db=db,
+            partida_id=partida_id,
+            turno_numero=estado_partida.turno_actual,
+            fase=estado_partida.fase_actual.value,
+            tipo_evento="conquista",
+            user=atacante_id,
+            datos={
+                "territorio_conquistado": ataque_in.territorio_destino_id,
+                "anterior_dueno": defensor_id,
+            },
+        )
+
         eliminado = await crud_combates.verificar_eliminacion_jugador(
             db=db, 
             partida_id=partida_id, 
             defensor_id=defensor_id, 
             mapa_actualizado=estado_partida.mapa
         )
+
         if eliminado:
             await notifier.enviar_jugador_eliminado(partida_id, defensor_id)
+            
+            await registrar_log(
+                db=db,
+                partida_id=partida_id,
+                turno_numero=estado_partida.turno_actual,
+                fase=estado_partida.fase_actual.value,
+                tipo_evento="jugador_eliminado",
+                user=atacante_id,
+                datos={"eliminado": defensor_id},
+            )
+            
             # Verificar si la partida ya ha terminado
             ganador = await verificar_y_finalizar_partida(db, partida_id)
             if ganador:
 
                 await notifier.enviar_fin_partida(partida_id, ganador)
+                
+                await registrar_log(
+                    db=db,
+                    partida_id=partida_id,
+                    turno_numero=estado_partida.turno_actual,
+                    fase=estado_partida.fase_actual.value,
+                    tipo_evento="fin_partida",
+                    user=ganador,
+                    datos={"ganador": ganador},
+                )
+
 
     await notifier.enviar_resultado_ataque(
         partida_id, 
@@ -316,6 +371,20 @@ async def ejecutar_ataque_especial(
     flag_modified(estado_partida, "jugadores")
     await crud_combates.guardar_estado_partida(db, estado_partida)
 
+
+    await registrar_log(
+        db=db,
+        partida_id=partida_id,
+        turno_numero=estado_partida.turno_actual,
+        fase=estado_partida.fase_actual.value,
+        tipo_evento="ataque_especial",
+        user=atacante_id,
+        datos={
+            "tipo_ataque": ataque_in.tipo_ataque,
+            "origen": ataque_in.origen,
+            "destino": ataque_in.destino,
+        },
+    )
 
     # Notificar al resto de la partida
     await notifier.enviar_ataque_especial(

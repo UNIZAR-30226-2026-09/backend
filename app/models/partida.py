@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import String, ForeignKey, Integer, Enum, CheckConstraint
+from sqlalchemy import String, ForeignKey, Integer, Enum, CheckConstraint, JSON, func
 from app.db.base import Base
 import enum
 from sqlalchemy.dialects.postgresql import JSONB
@@ -113,6 +113,7 @@ class EstadoPartida(Base):
 
     # Restrict no permite que se borre
     user_turno_actual: Mapped[str] = mapped_column(ForeignKey("usuarios.username", ondelete="RESTRICT"), nullable=False)
+    turno_actual: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
     # JSONB
     mapa: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
@@ -120,3 +121,20 @@ class EstadoPartida(Base):
 
     
     partida: Mapped["Partida"] = relationship(back_populates="estado_juego")
+
+
+class LogPartida(Base):
+
+    __tablename__ = "logs_partida"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+
+    partida_id: Mapped[int] = mapped_column(ForeignKey("partidas.id", ondelete="CASCADE"), index=True)
+    turno_numero: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    fase: Mapped[str] = mapped_column(String(50), nullable=False)
+    
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    tipo_evento: Mapped[str] = mapped_column(String(50), nullable=False)
+    
+    user: Mapped[str] = mapped_column(String(100), nullable=True)
+    datos: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)

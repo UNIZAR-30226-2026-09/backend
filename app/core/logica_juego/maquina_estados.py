@@ -9,9 +9,11 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from app.db.session import AsyncSessionLocal
 
-from app.models.partida import EstadoPartida, FasePartida, JugadoresPartida, EstadoJugador
+from app.models.partida import EstadoPartida, FasePartida, JugadoresPartida, EstadoJugador, LogPartida
 from app.core.ws_manager import manager
 from app.crud.crud_partidas import actualizar_tropas_reserva
+from app.crud.crud_logs import registrar_log
+
 from app.core.logica_juego.utils import obtener_territorios_jugador
 from app.core.logica_juego.constantes import ARBOL_TECNOLOGICO, HABILIDADES
 
@@ -72,7 +74,18 @@ async def avanzar_fase(
         await resolver_gestion_ronda(estado, estado.user_turno_actual)
 
         await asignar_tropas_reserva(estado, db)
-    
+
+        estado.turno_actual += 1
+        
+        await registrar_log(
+            db=db,
+            partida_id=partida_id,
+            turno_numero=estado.turno_actual,
+            fase=FasePartida.REFUERZO.value,
+            tipo_evento="cambio_turno",
+            user=estado.user_turno_actual,
+            datos={"turno_de": estado.user_turno_actual},
+        )
     
     
     # Actualizamos fase y tiempo límite

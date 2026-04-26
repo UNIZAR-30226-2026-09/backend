@@ -18,12 +18,13 @@ from app.schemas.estado_juego import TerritorioBase
 from app.schemas.partida import PartidaCreate, PartidaRead, VotoPausa
 from app.schemas.partida import AccionPausaOut, EmpezarPartidaOut, VerEstadoPartidaOut, PartidaActivaOut, UnirseOut, AbandonarOut
 from app.schemas.partida import FortificarIn, TecnologiasPartidaOut, HabilidadOut
-from app.schemas.partida import AsignarTrabajoIn, AsignarInvestigacionIn, ComprarTecnologiaIn
+from app.schemas.partida import AsignarTrabajoIn, AsignarInvestigacionIn, ComprarTecnologiaIn, LogPartidaRead
 from app.models.partida import EstadosPartida, EstadoPartida, FasePartida
 from app.api.deps import obtener_usuario_actual
 from app.models.usuario import User
 from app.db.session import get_db
 from app.crud import crud_partidas, crud_combates
+from app.crud.crud_logs import obtener_logs
 
 # Cosas nuevas para empezar la partida
 from app.core.map_state import game_map_state
@@ -549,3 +550,15 @@ async def obtener_tecnologias_partida(
         ))
 
     return TecnologiasPartidaOut(ramas=resultado)
+
+@router.get("/{partida_id}/logs", response_model=list[LogPartidaRead], status_code=status.HTTP_200_OK)
+async def obtener_logs_partida(
+    partida_id: int,
+    limit: int = 50,
+    usuario_actual: User = Depends(obtener_usuario_actual),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Devuelve el historial de eventos de una partida, más recientes primero.
+    """
+    return await obtener_logs(db, partida_id, limit)
