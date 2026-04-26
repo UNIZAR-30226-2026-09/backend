@@ -19,7 +19,7 @@ from app.schemas.partida import PartidaCreate, PartidaRead, VotoPausa
 from app.schemas.partida import AccionPausaOut, EmpezarPartidaOut, VerEstadoPartidaOut, PartidaActivaOut, UnirseOut, AbandonarOut
 from app.schemas.partida import FortificarIn, TecnologiasPartidaOut, HabilidadOut
 from app.schemas.partida import AsignarTrabajoIn, AsignarInvestigacionIn, ComprarTecnologiaIn, LogPartidaRead
-from app.models.partida import EstadosPartida, EstadoPartida, FasePartida
+from app.models.partida import EstadosPartida, EstadoPartida, FasePartida, EstadoJugador
 from app.api.deps import obtener_usuario_actual
 from app.models.usuario import User
 from app.db.session import get_db
@@ -29,7 +29,7 @@ from app.crud.crud_logs import obtener_logs
 # Cosas nuevas para empezar la partida
 from app.core.map_state import game_map_state
 from app.core.logica_juego.inicializacion import generar_reparto_inicial, repartir_tropas_iniciales, determinar_orden_jugadores
-from app.core.logica_juego.maquina_estados import iniciar_temporizador, tareas_en_segundo_plano, asignar_tropas_reserva
+from app.core.logica_juego.maquina_estados import iniciar_temporizador, tareas_en_segundo_plano, asignar_tropas_reserva, timers_por_partida, votos_pausa
 
 from app.core.ws_manager import manager
 from app.core.notifier import notifier
@@ -333,7 +333,44 @@ async def reanudar_partida(
     - **usuario_actual**: El usuario que reanuda la partida (host)
     - **db**: Sesión de base de datos asíncrona.
     """
-    raise HTTPException(status_code=501, detail="No implementado")
+
+    partida = await crud_partidas.obtener_partida_por_codigo(db, code)
+    if not partida:
+        raise HTTPException(status_code=404, detail="Partida no encontrada")
+    if partida.estado != EstadosPartida.PAUSADA:
+        raise HTTPException(status_code=400, detail="La partida no está pausada")
+    if partida.creador != usuario_actual.username:
+        raise HTTPException(status_code=403, detail="Solo el host puede reanudar la partida")
+
+    estado = await crud_partidas.obtener_estado_partida(db, partida.id)
+    if not estado:
+        raise HTTPException(status_code=404, detail="Estado de partida no encontrado")
+
+    votos_pausa.pop(partida.id, None)
+
+    nuevo_fin_fase = datetime.now(timezone.utc) + timedelta(seconds=partida.config_timer_seconds)
+    estado.fin_fase_actual = nuevo_fin_fase
+    partida.estado = EstadosPartida.ACTIVA
+    await db.commit()
+
+    nueva_tarea = asyncio.create_task(
+        iniciar_temporizador(partida.id, estado.fase_actual, nuevo_fin_fase)
+    )
+    timers_por_partida[partida.id] = nueva_tarea
+    tareas_en_segundo_plano.add(nueva_tarea)
+    nueva_tarea.add_done_callback(tareas_en_segundo_plano.discard)
+
+    await notifier.enviar_partida_reanudada(
+        partida_id=partida.id,
+        nueva_fase=estado.fase_actual.value,
+        jugador_activo=estado.user_turno_actual,
+        fin_fase_utc=nuevo_fin_fase.isoformat()
+    )
+
+    return AccionPausaOut(
+        mensaje="La partida ha sido reanudada.",
+        estado_actual=EstadosPartida.ACTIVA.value
+    )
 
 @router.post("/{code}/pausa/solicitar", response_model=AccionPausaOut, status_code=status.HTTP_200_OK)
 async def solicitar_pausa(
@@ -348,7 +385,27 @@ async def solicitar_pausa(
     - **usuario_actual**: El jugador que propone pausar el juego.
     - **db**: Sesión de base de datos asíncrona.
     """
-    raise HTTPException(status_code=501, detail="No implementado")
+    partida = await crud_partidas.obtener_partida_por_codigo(db, code)
+    if not partida:
+        raise HTTPException(status_code=404, detail="Partida no encontrada")
+    if partida.estado != EstadosPartida.ACTIVA:
+        raise HTTPException(status_code=400, detail="La partida no está activa")
+
+    jugadores = await crud_partidas.obtener_jugadores_partida(db, partida.id)
+    if not any(j.usuario_id == usuario_actual.username for j in jugadores):
+        raise HTTPException(status_code=403, detail="No eres jugador de esta partida")
+
+    if partida.id in votos_pausa:
+        raise HTTPException(status_code=400, detail="Ya hay una votación de pausa en curso")
+
+    votos_pausa[partida.id] = {}
+
+    await notifier.enviar_solicitud_pausa(partida.id, usuario_actual.username)
+
+    return AccionPausaOut(
+        mensaje="Votación de pausa iniciada. Todos deben votar a favor para pausar.",
+        estado_actual=partida.estado.value
+    )
 
 
 @router.post("/{code}/pausa/votar", response_model=AccionPausaOut, status_code=status.HTTP_200_OK)
@@ -360,15 +417,66 @@ async def votar_pausa(
 ):
     """
     Los jugadores usan este endpoint para votar si quieren pausar o no.
-    Si los votos a favor alcanzan la mayoría, el estado pasará a PAUSED.
+    Si los votos a favor alcanzan unanimidad, el estado pasará a PAUSADA.
+    Un voto en contra cancela la votación.
 
     - **code**: Código único de 6 caracteres de la partida.
     - **voto_in**: Booleano indicando si vota que SÍ (true) o que NO (false).
     - **usuario_actual**: El jugador que emite el voto.
     - **db**: Sesión de base de datos asíncrona.
     """
-    raise HTTPException(status_code=501, detail="No implementado")
+    partida = await crud_partidas.obtener_partida_por_codigo(db, code)
+    if not partida:
+        raise HTTPException(status_code=404, detail="Partida no encontrada")
+    if partida.estado != EstadosPartida.ACTIVA:
+        raise HTTPException(status_code=400, detail="La partida no está activa")
 
+    jugadores = await crud_partidas.obtener_jugadores_partida(db, partida.id)
+    if not any(j.usuario_id == usuario_actual.username for j in jugadores):
+        raise HTTPException(status_code=403, detail="No eres jugador de esta partida")
+
+    if partida.id not in votos_pausa:
+        raise HTTPException(status_code=400, detail="No hay ninguna votación de pausa activa")
+
+    if usuario_actual.username in votos_pausa[partida.id]:
+        raise HTTPException(status_code=400, detail="Ya has votado")
+
+    votos_pausa[partida.id][usuario_actual.username] = voto_in.voto_a_favor
+
+    if not voto_in.voto_a_favor:
+        del votos_pausa[partida.id]
+        await notifier.enviar_pausa_rechazada(partida.id, usuario_actual.username)
+        return AccionPausaOut(
+            mensaje="Has votado en contra. La pausa ha sido cancelada.",
+            estado_actual=partida.estado.value
+        )
+
+    jugadores_vivos = [j for j in jugadores if j.estado_jugador == EstadoJugador.VIVO]
+    total = len(jugadores_vivos)
+    votos_favor = sum(1 for v in votos_pausa[partida.id].values() if v)
+
+    await notifier.enviar_voto_registrado(partida.id, usuario_actual.username, True, votos_favor, total)
+
+    if votos_favor >= total:
+        del votos_pausa[partida.id]
+
+        timer = timers_por_partida.pop(partida.id, None)
+        if timer and not timer.done():
+            timer.cancel()
+
+        partida.estado = EstadosPartida.PAUSADA
+        await db.commit()
+
+        await notifier.enviar_partida_pausada(partida.id)
+        return AccionPausaOut(
+            mensaje="¡Unanimidad! La partida ha sido pausada.",
+            estado_actual=EstadosPartida.PAUSADA.value
+        )
+
+    return AccionPausaOut(
+        mensaje=f"Voto registrado ({votos_favor}/{total} a favor).",
+        estado_actual=partida.estado.value
+    )
 
 @router.post("/{partida_id}/fortificar", status_code=status.HTTP_200_OK)
 async def fortificar_tropas(

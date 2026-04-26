@@ -220,4 +220,48 @@ class GameNotifier:
         }, partida_id, username)
 
 
+    @staticmethod
+    async def enviar_solicitud_pausa(partida_id: int, solicitante: str):
+        await manager.broadcast({
+            "tipo_evento": "SOLICITUD_PAUSA",
+            "solicitante": solicitante,
+            "mensaje": f"{solicitante} ha solicitado pausar la partida. Todos deben votar."
+        }, partida_id)
+
+    @staticmethod
+    async def enviar_voto_registrado(partida_id: int, votante: str, a_favor: bool, votos_a_favor: int, total: int):
+        await manager.broadcast({
+            "tipo_evento": "VOTO_PAUSA",
+            "votante": votante,
+            "a_favor": a_favor,
+            "votos_a_favor": votos_a_favor,
+            "total_jugadores": total,
+        }, partida_id)
+
+    @staticmethod
+    async def enviar_pausa_rechazada(partida_id: int, votante: str):
+        await manager.broadcast({
+            "tipo_evento": "PAUSA_RECHAZADA",
+            "votante": votante,
+            "mensaje": f"{votante} ha votado en contra. La pausa ha sido cancelada."
+        }, partida_id)
+
+    @staticmethod
+    async def enviar_partida_pausada(partida_id: int):
+        await manager.broadcast({
+            "tipo_evento": "PARTIDA_PAUSADA",
+            "mensaje": "La partida ha sido pausada por unanimidad."
+        }, partida_id)
+
+    @staticmethod
+    async def enviar_partida_reanudada(partida_id: int, nueva_fase: str, jugador_activo: str, fin_fase_utc: str):
+        await manager.broadcast({
+            "tipo_evento": "PARTIDA_REANUDADA",
+            "nueva_fase": nueva_fase,
+            "jugador_activo": jugador_activo,
+            "fin_fase_utc": fin_fase_utc,
+            "mensaje": "La partida ha sido reanudada."
+        }, partida_id)
+
+
 notifier = GameNotifier()

@@ -9,9 +9,9 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from app.db.session import AsyncSessionLocal
 
-from app.models.partida import EstadoPartida, FasePartida, JugadoresPartida, EstadoJugador, LogPartida
+from app.models.partida import EstadoPartida, FasePartida, JugadoresPartida, EstadoJugador, Partida, EstadosPartida
 from app.core.ws_manager import manager
-from app.crud.crud_partidas import actualizar_tropas_reserva
+from app.crud.crud_partidas import actualizar_tropas_reserva, obtener_partida_por_id
 from app.crud.crud_logs import registrar_log
 
 from app.core.logica_juego.utils import obtener_territorios_jugador
@@ -27,6 +27,7 @@ from app.core.notifier import notifier
 # Guarda las tareas para que Python no las borre por error
 tareas_en_segundo_plano = set()
 timers_por_partida: dict[int, asyncio.Task] = {}
+votos_pausa: dict[int, dict[str, bool]] = {}
 
 TRANSICIONES = {
     FasePartida.REFUERZO: FasePartida.GESTION,
@@ -132,6 +133,11 @@ async def iniciar_temporizador(partida_id: int, fase_vigente: FasePartida, tiemp
 
     try:
         async with AsyncSessionLocal() as db_session:
+            partida = await obtener_partida_por_id(db_session, partida_id)
+
+            if partida and partida.estado == EstadosPartida.PAUSADA:
+                return
+
             await avanzar_fase(
                 partida_id=partida_id,
                 db=db_session,
