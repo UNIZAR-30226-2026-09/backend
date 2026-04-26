@@ -22,11 +22,13 @@ class PartidaCreate(BaseModel):
 class PartidaRead(BaseModel):
     # Lo que ve la gente en el lobby
     id: int
+    creador: str
     config_max_players: int
     config_visibility: TipoVisibilidad
     codigo_invitacion: str
     config_timer_seconds: int
     estado: EstadosPartida
+    jugadores_actuales: int = 0
     ganador: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)

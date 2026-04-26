@@ -157,6 +157,7 @@ def test_unirse_partida_emite_nuevo_jugador(client, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_http_ataque_emite_ws(monkeypatch):
+    from app.models.partida import FasePartida
     async def fake_obtener_estado_partida(db, partida_id):
         class Estado:
             mapa = {
@@ -164,7 +165,8 @@ async def test_http_ataque_emite_ws(monkeypatch):
                 "B": {"owner_id": "p2", "units": 2},
             }
             jugadores = {"p1": {"tropas_reserva": 0, "movimiento_conquista_pendiente": False}}
-            fase_actual = None
+            fase_actual = FasePartida.ATAQUE_CONVENCIONAL
+            turno_actual = 1
         return Estado()
 
     async def fake_guardar_estado_partida(db, estado_partida):

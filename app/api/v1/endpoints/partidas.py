@@ -87,7 +87,6 @@ async def listar_partidas_publicas(
     
     Retorna una lista de partidas configuradas como públicas.
     """
-    #! Validad usuario actual ¿?
     return await crud_partidas.obtener_partidas_publicas(db)
 
 @router.post("/{codigo}/unirse", response_model=UnirseOut)

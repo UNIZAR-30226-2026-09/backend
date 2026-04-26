@@ -62,22 +62,45 @@ async def crear_partida_y_creador(
 # ----------------------------------------------------------------------------
 # 2. OBTENER PARTIDAS PÚBLICAS
 # ----------------------------------------------------------------------------
+from sqlalchemy import select, func
+from app.models.partida import Partida, EstadosPartida, TipoVisibilidad, JugadoresPartida
+
+# ... (tus otros imports y funciones) ...
+
 async def obtener_partidas_publicas(db: AsyncSession) -> list[Partida]:
     """
     Devuelve la lista de partidas en estado CREANDO y visibilidad PUBLICA.
+    Además, inyecta dinámicamente el atributo 'jugadores_actuales' en cada objeto.
     
     Args:
         db: Sesión de base de datos
         
     Returns:
-        Lista de partidas públicas disponibles
+        Lista de partidas públicas disponibles con el conteo de jugadores.
     """
-    query = select(Partida).where(
-        Partida.estado == EstadosPartida.CREANDO,
-        Partida.config_visibility == TipoVisibilidad.PUBLICA
+    query = (
+        select(
+            Partida, 
+            func.count(JugadoresPartida.usuario_id).label("conteo")
+        )
+        .outerjoin(JugadoresPartida, Partida.id == JugadoresPartida.partida_id)
+        .where(
+            Partida.estado == EstadosPartida.CREANDO,
+            Partida.config_visibility == TipoVisibilidad.PUBLICA
+        )
+        .group_by(Partida.id)
     )
+    
     resultado = await db.execute(query)
-    return resultado.scalars().all()
+    
+    filas = resultado.all()
+    
+    partidas_lista = []
+    for partida_obj, conteo in filas:
+        partida_obj.jugadores_actuales = conteo
+        partidas_lista.append(partida_obj)
+        
+    return partidas_lista
 
 # ----------------------------------------------------------------------------
 # 3. OBTENER PARTIDA POR CÓDIGO

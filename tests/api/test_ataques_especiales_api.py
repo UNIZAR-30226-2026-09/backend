@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 from app.core.logica_juego.config_ataques_especiales import TipoAtaque
 from app.api.deps import obtener_usuario_actual
+from app.models.partida import FasePartida
 from app.main import app
 
 @pytest.fixture
@@ -16,6 +17,8 @@ def test_ejecutar_ataque_especial_exito(client, mock_user):
 
     mock_estado = MagicMock()
     mock_estado.user_turno_actual = "testuser"
+    mock_estado.turno_actual = 1
+    mock_estado.fase_actual = FasePartida.ATAQUE_ESPECIAL
     mock_estado.jugadores = {
         "testuser": {
             "tecnologias_compradas": [TipoAtaque.MORTERO_TACTICO]
@@ -27,6 +30,7 @@ def test_ejecutar_ataque_especial_exito(client, mock_user):
         with patch("app.api.v1.endpoints.combates.obtener_estado_partida", return_value=mock_estado), \
              patch("app.api.v1.endpoints.combates.REGISTRO_ATAQUES", {TipoAtaque.MORTERO_TACTICO: MagicMock()}), \
              patch("app.api.v1.endpoints.combates.crud_combates.guardar_estado_partida"), \
+             patch("app.api.v1.endpoints.combates.registrar_log"), \
              patch("app.api.v1.endpoints.combates.notifier.enviar_ataque_especial") as mock_notify:
 
             payload = {
