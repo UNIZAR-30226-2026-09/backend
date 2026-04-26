@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.v1.api import api_router
+from fastapi.staticfiles import StaticFiles
+import os 
 
 # =============================================================================
 # CONFIGURACIÓN DE LA APLICACIÓN (ENTRY POINT)
@@ -14,6 +16,12 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+# =============================================================================
+# ARCHIVOS ESTÁTICOS
+# =============================================================================
+os.makedirs("app/static/perfiles", exist_ok=True)
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # =============================================================================
 # MIDDLEWARE: CORS (Seguridad de Navegador)

@@ -15,6 +15,7 @@ class UserCreate(UserBase):
 
 class UserRead(UserBase):
     # Lo que devolvemos al frontend (sin la contraseña)
+    avatar: Optional[str] = "/static/perfiles/default.png"
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -22,6 +23,10 @@ class UserUpdate(BaseModel):
     # Todo opcional por si el calvo solo quiere cambiar el email
     email: Optional[EmailStr] = None
     password: Optional[str] = Field(None, min_length=6)
+    avatar: Optional[str] = None
+
+class AvatarUpdate(BaseModel):
+    avatar_name: str
 
  
 # ESTADÍSTICAS
@@ -58,6 +63,8 @@ class RankingItemOut(BaseModel):
     num_partidas_jugadas: int 
     num_soldados_matados: int
 
+    avatar: Optional[str] = "/static/perfiles/default.png"
+
     @computed_field
     @property
     def winrate(self) -> float:
@@ -90,6 +97,7 @@ class AmistadUpdate(BaseModel):
 class AmigoActivoRead(BaseModel):
     username: str
     estado_conexion: str # "EN_PARTIDA", "CONECTADO", "DESCONECTADO"
+    avatar: Optional[str] = "/static/perfiles/default.png"
 
 # TOKENS VIP (JWT)
 

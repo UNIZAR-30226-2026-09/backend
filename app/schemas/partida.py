@@ -123,3 +123,15 @@ class HabilidadOut(BaseModel):
 
 class TecnologiasPartidaOut(BaseModel):
     ramas: Dict[str, List[HabilidadOut]]
+
+class LogPartidaRead(BaseModel):
+    id: int
+    partida_id: int
+    turno_numero: int
+    fase: str
+    timestamp: datetime
+    tipo_evento: str
+    user: Optional[str]
+    datos: dict
+
+    model_config = ConfigDict(from_attributes=True)

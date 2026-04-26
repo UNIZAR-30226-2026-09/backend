@@ -23,8 +23,9 @@ class User(Base):
     username: Mapped[str] = mapped_column(String(50), primary_key=True)
     email: Mapped[str] = mapped_column(String(50), unique=True)
     passwd_hash: Mapped[str] = mapped_column(String(255))
-    #avatar: Mapped[str] = mapped_column(String(255), default="default_avatar.png", nullable=True)
+    avatar: Mapped[str] = mapped_column(String(255), default="/static/perfiles/default.png", nullable=True)
     #fecha_registro: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    
     
     # --- RELACIONES ---    
     estadisticas: Mapped["Estadistica"] = relationship(back_populates="usuario", cascade="all, delete-orphan")

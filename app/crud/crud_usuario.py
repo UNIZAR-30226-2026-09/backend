@@ -72,3 +72,35 @@ async def crear_usuario(
     await db.refresh(nuevo_usuario)
 
     return nuevo_usuario
+
+# ----------------------------------------------------------------------------
+# 4. ACTUALIZAR AVATAR
+# ----------------------------------------------------------------------------
+async def actualizar_avatar(db: AsyncSession, username: str, ruta_avatar: str) -> User:
+    """
+    Actualiza la ruta del avatar de un usuario en la base de datos.
+    """
+    query = select(User).where(User.username == username)
+    result = await db.execute(query)
+    usuario = result.scalar_one_or_none()
+    
+    if usuario:
+        usuario.avatar = ruta_avatar
+        await db.commit()
+        await db.refresh(usuario)
+        
+    return usuario
+
+# ----------------------------------------------------------------------------
+# 5. ACTUALIZAR PERFIL DE USUARIO
+# ----------------------------------------------------------------------------
+async def actualizar_usuario(db: AsyncSession, usuario_actual: User, datos_actualizar: dict) -> User:
+    """
+    Actualiza dinámicamente los campos de un usuario.
+    """
+    for campo, valor in datos_actualizar.items():
+        setattr(usuario_actual, campo, valor)
+        
+    await db.commit()
+    await db.refresh(usuario_actual)
+    return usuario_actual

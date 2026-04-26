@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.models.usuario import User
-from app.schemas.usuario import UserCreate, UserRead, Token, UserUpdate, EstadisticaRead
+from app.schemas.usuario import UserCreate, UserRead, Token, UserUpdate, EstadisticaRead, AvatarUpdate
 from app.core.security import get_password_hash, verify_password, create_access_token
 from app.api.deps import obtener_usuario_actual
 from app.crud import crud_usuario, crud_estadisticas
@@ -91,11 +91,62 @@ async def actualizar_perfil_actual(
 ):
     """
     Actualiza la información del perfil del usuario autenticado.
-
-    - **usuario_in**: Esquema con los campos a modificar (ej. avatar_url, email).
-    - **usuario_actual**: Dependencia que valida el usuario actual autenticado.
-    - **db**: Sesión de base de datos asíncrona.
-    
-    Retorna el perfil del usuario actualizado.
+    Solo se actualizarán los campos que se envíen en la petición.
     """
-    raise HTTPException(status_code=501, detail="No implementado")
+    update_data = usuario_in.model_dump(exclude_unset=True)
+    
+    if not update_data:
+        return usuario_actual
+
+    if "email" in update_data and update_data["email"] != usuario_actual.email:
+        email_existente = await crud_usuario.get_user_by_email(db, update_data["email"])
+        if email_existente:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, 
+                detail="Este email ya está en uso por otro general."
+            )
+
+    if "password" in update_data:
+        contra_hasheada = get_password_hash(update_data["password"])
+        update_data["passwd_hash"] = contra_hasheada
+        del update_data["password"] # Borramos la contraseña en claro del diccionario
+
+    usuario_actualizado = await crud_usuario.actualizar_usuario(db, usuario_actual, update_data)
+    
+    return usuario_actualizado
+
+
+AVATARES_PERMITIDOS = [
+    "1.png",
+    "2.png",
+    "3.png",
+    "4.png",
+    "5.png",
+    "6.png"
+]
+
+@router.put("/me/avatar", response_model=UserRead)
+async def cambiar_avatar_predefinido(
+    avatar_in: AvatarUpdate,
+    usuario_actual: User = Depends(obtener_usuario_actual),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Actualiza la foto de perfil del usuario eligiendo entre las opciones predefinidas.
+    """
+    if avatar_in.avatar_name not in AVATARES_PERMITIDOS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail=f"Avatar no válido. Las opciones son: {', '.join(AVATARES_PERMITIDOS)}"
+        )
+
+    # Construimos la ruta estática
+    ruta_url = f"/static/perfiles/{avatar_in.avatar_name}"
+
+    # Guardamos en base de datos
+    usuario_actualizado = await crud_usuario.actualizar_avatar(db, usuario_actual.username, ruta_url)
+    
+    if not usuario_actualizado:
+         raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+
+    return usuario_actualizado
