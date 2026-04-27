@@ -279,7 +279,7 @@ async def obtener_mi_partida_activa(
     """
     entrada = await crud_partidas.obtener_partida_activa_del_jugador(db, usuario_actual.username)
     if not entrada:
-        raise HTTPException(status_code=404, detail="No tienes ninguna partida activa")
+        return PartidaActivaOut(tiene_partida_activa=False)
 
     partida = await crud_partidas.obtener_partida_por_id(db, entrada.partida_id)
     estado = await crud_partidas.obtener_estado_partida(db, entrada.partida_id)

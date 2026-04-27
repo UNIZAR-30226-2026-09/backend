@@ -82,9 +82,10 @@ class VerEstadoPartidaOut(BaseModel):
     jugadores: Dict[str, Any]
 
 class PartidaActivaOut(BaseModel):
-    partida_id: int
-    estado: EstadosPartida
-    codigo_invitacion: str
+    tiene_partida_activa: bool
+    partida_id: int = None
+    estado: EstadosPartida = None
+    codigo_invitacion: str = None
     fase_actual: Optional[FasePartida] = None
     turno_de: Optional[str] = None
     fin_fase_utc: Optional[datetime] = None
