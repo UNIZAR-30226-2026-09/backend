@@ -8,7 +8,7 @@ from app.schemas.usuario import UserCreate, UserRead, Token, UserUpdate, Estadis
 from app.core.security import get_password_hash, verify_password, create_access_token
 from app.api.deps import obtener_usuario_actual
 from app.crud import crud_usuario, crud_estadisticas
-from app.core.logica_juego.constantes import AVATARES_PERMITIDOS
+from app.core.logica_juego.constantes import AVATARES_PERMITIDOS, MENSAJES_CHAT_PERMITIDOS, REACCIONES_CHAT_PERMITIDAS
 
 router = APIRouter()
 
@@ -142,3 +142,11 @@ async def cambiar_avatar_predefinido(
          raise HTTPException(status_code=404, detail="Usuario no encontrado.")
 
     return usuario_actualizado
+
+@router.get("/opciones")
+async def obtener_opciones_usuario():
+    return {
+        "avatares": AVATARES_PERMITIDOS,
+        "mensajes": MENSAJES_CHAT_PERMITIDOS,
+        "reacciones": REACCIONES_CHAT_PERMITIDAS
+    }
