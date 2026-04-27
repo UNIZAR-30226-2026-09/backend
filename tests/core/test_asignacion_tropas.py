@@ -1,9 +1,11 @@
 import pytest
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.partida import Partida, EstadoPartida, FasePartida, JugadoresPartida, EstadosPartida
+from app.models.partida import Partida, EstadoPartida, FasePartida, JugadoresPartida, EstadosPartida, EstadoJugador
 from app.models.usuario import User
 from app.core.logica_juego.maquina_estados import avanzar_fase, asignar_tropas_reserva
+from app.core.logica_juego.config_ataques_especiales import TipoEfecto
 
 @pytest.fixture(autouse=True)
 def mock_notifier(monkeypatch):
@@ -97,3 +99,70 @@ async def test_avanzar_fase_asigna_tropas(db: AsyncSession, monkeypatch):
     assert estado.fase_actual == FasePartida.REFUERZO
     assert estado.user_turno_actual == "u2"
     assert estado.jugadores["u2"]["tropas_reserva"] == 3
+
+
+@pytest.mark.asyncio
+async def test_avanzar_fase_tick_gripe_aviar_elimina_jugador(db: AsyncSession, monkeypatch):
+    """Un jugador cuyo único territorio llega a 0 por tick de gripe aviar debe quedar MUERTO."""
+    user1 = User(username="u1", email="u1@test.com", passwd_hash="xxx")
+    user2 = User(username="u2", email="u2@test.com", passwd_hash="xxx")
+    db.add_all([user1, user2])
+    await db.commit()
+
+    partida = Partida(
+        id=1, config_max_players=2, codigo_invitacion="TEST",
+        creador="u1", estado=EstadosPartida.ACTIVA, config_timer_seconds=60
+    )
+    db.add(partida)
+    await db.commit()
+
+    jp1 = JugadoresPartida(usuario_id="u1", partida_id=1, turno=1)
+    jp2 = JugadoresPartida(usuario_id="u2", partida_id=1, turno=2)
+    db.add_all([jp1, jp2])
+
+    # u2 tiene un único territorio con 1 tropa y gripe aviar activa
+    mapa = {
+        "T_u1": {"owner_id": "u1", "units": 5, "efectos": [], "estado_bloqueo": None},
+        "T_u2": {
+            "owner_id": "u2", "units": 1,
+            "efectos": [{"tipo_efecto": TipoEfecto.GRIPE_AVIAR, "duracion_restante": 2, "origen_jugador_id": "u1"}],
+            "estado_bloqueo": None,
+        },
+    }
+    estado = EstadoPartida(
+        partida_id=1,
+        fase_actual=FasePartida.FORTIFICACION,
+        fin_fase_actual=datetime.now(timezone.utc),
+        user_turno_actual="u1",
+        mapa=mapa,
+        jugadores={
+            "u1": {
+                "tropas_reserva": 0, "efectos": [], "tecnologias_compradas": [], "monedas": 0,
+                "tecnologias_predesbloqueadas": [], "territorio_trabajando": None,
+                "territorio_investigando": None, "habilidad_investigando": None,
+            },
+            "u2": {"tropas_reserva": 0, "efectos": [], "tecnologias_compradas": [], "monedas": 0},
+        },
+    )
+    db.add(estado)
+    await db.commit()
+
+    async def noop(*args, **kwargs): pass
+
+    monkeypatch.setattr("app.core.ws_manager.manager.broadcast", noop)
+    monkeypatch.setattr("app.core.notifier.notifier.enviar_cambio_fase", noop)
+    monkeypatch.setattr("app.core.notifier.notifier.enviar_actualizacion_territorio", noop)
+    monkeypatch.setattr("app.core.notifier.notifier.enviar_jugador_eliminado", noop)
+    # Simulamos que la partida continúa (no termina) para poder verificar el estado
+    monkeypatch.setattr(
+        "app.core.logica_juego.victoria.verificar_y_finalizar_partida",
+        AsyncMock(return_value=None)
+    )
+
+    await avanzar_fase(1, db)
+
+    await db.refresh(jp2)
+    assert jp2.estado_jugador == EstadoJugador.MUERTO
+    assert estado.mapa["T_u2"]["owner_id"] == "neutral"
+    assert estado.mapa["T_u2"]["units"] == 0
+    assert estado.user_turno_actual == "u1"

@@ -42,6 +42,24 @@ def estado_mock():
 @pytest.mark.asyncio
 @patch("app.crud.crud_partidas.flag_modified")
 @patch("app.core.logica_juego.efectos_persistentes.notifier.enviar_actualizacion_territorio")
+async def test_gripe_aviar_neutraliza_territorio_con_ultima_tropa(mock_notifier_ws, mock_flag, estado_mock):
+    """Si gripe aviar consume la última tropa, el territorio debe pasar a neutral."""
+    estado_mock.mapa["T1"]["units"] = 1
+    estado_mock.mapa["T1"]["efectos"].append({
+        "tipo_efecto": TipoEfecto.GRIPE_AVIAR,
+        "duracion_restante": 2,
+        "origen_jugador_id": "jugador2"
+    })
+
+    await procesar_efectos_inicio_turno(estado_mock, "jugador1")
+
+    assert estado_mock.mapa["T1"]["units"] == 0
+    assert estado_mock.mapa["T1"]["owner_id"] == "neutral"
+
+
+@pytest.mark.asyncio
+@patch("app.crud.crud_partidas.flag_modified")
+@patch("app.core.logica_juego.efectos_persistentes.notifier.enviar_actualizacion_territorio")
 async def test_gripe_aviar_dano_por_turno(mock_notifier_ws, mock_flag, estado_mock):
     estado_mock.mapa["T1"]["efectos"].append({
         "tipo_efecto": TipoEfecto.GRIPE_AVIAR,

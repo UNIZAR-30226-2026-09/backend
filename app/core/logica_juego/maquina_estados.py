@@ -20,6 +20,7 @@ from app.core.logica_juego.constantes import ARBOL_TECNOLOGICO, HABILIDADES
 from app.core.logica_juego.config_ataques_especiales import TipoAtaque, TipoEfecto
 from app.core.logica_juego.ataques_especiales import calcular_refuerzos_academia, calcular_robo_propaganda
 from app.core.logica_juego.efectos_persistentes import procesar_efectos_fin_de_turno, procesar_efectos_inicio_turno
+from app.core.logica_juego.victoria import resolver_eliminaciones
 
 from app.core.map_state import game_map_state
 
@@ -71,6 +72,23 @@ async def avanzar_fase(
 
         await procesar_efectos_inicio_turno(estado, estado.user_turno_actual)  
 
+        # Comporbar si el tick de gripe avias / coronavirus elimino al jugador
+        while len(obtener_territorios_jugador(estado.mapa, estado.user_turno_actual)) == 0:
+            jugador_tick_id = estado.user_turno_actual
+            ganador = await resolver_eliminaciones(
+                db=db,
+                partida_id=partida_id,
+                defensores={jugador_tick_id},
+                mapa=estado.mapa,
+                turno_actual=estado.turno_actual,
+                fase_actual=estado.fase_actual.value,
+            )
+            if ganador:
+                return estado
+            # Avanzar al siguiente jugador vivo (el muerto ya está marcado en BD)
+            estado.user_turno_actual = await calcular_siguiente_jugador(partida_id, jugador_tick_id, db)
+            await procesar_efectos_inicio_turno(estado, estado.user_turno_actual)
+        
         # Verificamos fin de investigacion / trabajo en el inicio del turno
         await resolver_gestion_ronda(estado, estado.user_turno_actual)
 

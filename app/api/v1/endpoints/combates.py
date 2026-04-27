@@ -19,6 +19,8 @@ from app.core.logica_juego.validaciones import validar_colocacion_tropas
 from app.core.logica_juego.combate import resolver_colocacion_tropas, aplicar_resultado_combate, ejecutar_conquista, cobrar_incentivo_ataque
 from app.core.logica_juego.ataques_especiales import REGISTRO_ATAQUES
 from app.core.logica_juego.utils import obtener_datos_territorio, verificar_movimiento_pendiente
+from app.core.logica_juego.victoria import resolver_eliminaciones
+
 from app.core.notifier import notifier
 
 
@@ -131,41 +133,15 @@ async def ejecutar_ataque(
         )
 
         if not era_territorio_vacio:
-            eliminado = await crud_combates.verificar_eliminacion_jugador(
-                db=db, 
-                partida_id=partida_id, 
-                defensor_id=defensor_id, 
-                mapa_actualizado=estado_partida.mapa
+            await resolver_eliminaciones(
+                db=db,
+                partida_id=partida_id,
+                defensores={defensor_id},
+                mapa=estado_partida.mapa,
+                turno_actual=estado_partida.turno_actual,
+                fase_actual=estado_partida.fase_actual.value,
+                atacante_id=atacante_id,
             )
-
-            if eliminado:
-                await notifier.enviar_jugador_eliminado(partida_id, defensor_id)
-                
-                await registrar_log(
-                    db=db,
-                    partida_id=partida_id,
-                    turno_numero=estado_partida.turno_actual,
-                    fase=estado_partida.fase_actual.value,
-                    tipo_evento="jugador_eliminado",
-                    user=atacante_id,
-                    datos={"eliminado": defensor_id},
-                )
-                
-                # Verificar si la partida ya ha terminado
-                ganador = await verificar_y_finalizar_partida(db, partida_id)
-                if ganador:
-
-                    await notifier.enviar_fin_partida(partida_id, ganador)
-                    
-                    await registrar_log(
-                        db=db,
-                        partida_id=partida_id,
-                        turno_numero=estado_partida.turno_actual,
-                        fase=estado_partida.fase_actual.value,
-                        tipo_evento="fin_partida",
-                        user=ganador,
-                        datos={"ganador": ganador},
-                    )
 
 
     await notifier.enviar_resultado_ataque(
@@ -374,6 +350,12 @@ async def ejecutar_ataque_especial(
         raise HTTPException(
             status_code=400, detail="Solo puedes realizar un ataque especial por turno.")
 
+    propietarios_antes = {
+        tid: data["owner_id"]
+        for tid, data in estado_partida.mapa.items()
+        if data["owner_id"] not in ("neutral", atacante_id)
+    }
+
     try:
         # Ejecutamos el ataque
         resultado_accion = funcion_ataque(estado_partida, atacante_id, ataque_in.origen, ataque_in.destino)
@@ -387,6 +369,23 @@ async def ejecutar_ataque_especial(
     flag_modified(estado_partida, "jugadores")
     await crud_combates.guardar_estado_partida(db, estado_partida)
 
+    # Comprobar si algún territorio enemigo pasó a neutral (tropas a 0)
+    posibles_defensores = {
+        owner
+        for tid, owner in propietarios_antes.items()
+        if estado_partida.mapa[tid]["owner_id"] == "neutral"
+    }
+    
+    if posibles_defensores:
+        await resolver_eliminaciones(
+            db=db,
+            partida_id=partida_id,
+            defensores=posibles_defensores,
+            mapa=estado_partida.mapa,
+            turno_actual=estado_partida.turno_actual,
+            fase_actual=estado_partida.fase_actual.value,
+            atacante_id=atacante_id,
+        )
 
     await registrar_log(
         db=db,
