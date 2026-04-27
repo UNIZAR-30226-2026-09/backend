@@ -41,7 +41,7 @@ async def handle_chat(id_partida: int, username: str, data: dict):
     print(f"[CHAT LOG] {username} en Partida {id_partida} envió {tipo_chat}: {contenido}")
 
     async with AsyncSessionLocal() as db:
-        nuevo_log = await crud_logs.crear_log(
+        nuevo_log = await crud_logs.registrar_log(
             db=db,
             partida_id=id_partida,
             turno_numero=0, 

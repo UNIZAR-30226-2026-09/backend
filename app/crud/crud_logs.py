@@ -12,7 +12,7 @@ async def registrar_log(
     tipo_evento: str,
     user: str | None,
     datos: dict,
-) -> None:
+) -> LogPartida:
     log = LogPartida(
         partida_id=partida_id,
         turno_numero=turno_numero,
@@ -23,6 +23,9 @@ async def registrar_log(
     )
     db.add(log)
     await db.commit()
+    await db.refresh(log)
+
+    return log
 
 
 async def obtener_logs(db: AsyncSession, partida_id: int, limit: int = 50) -> list[LogPartida]:

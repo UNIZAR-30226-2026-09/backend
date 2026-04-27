@@ -52,8 +52,20 @@ def client():
 @pytest.fixture
 def patch_ws_db(monkeypatch):
     from app.api.v1.endpoints import websockets as ws_endpoint
+    from app.core import event_handler
+    from app.crud import crud_logs
 
     monkeypatch.setattr(ws_endpoint, "AsyncSessionLocal", lambda: DummySession())
+    monkeypatch.setattr(event_handler, "AsyncSessionLocal", lambda: DummySession())
+    
+    async def fake_registrar_log(*args, **kwargs):
+        class FakeLog:
+            timestamp = datetime.now(timezone.utc)
+        return FakeLog()
+    
+    # Parcheamos registrar_log que es el que usas ahora
+    monkeypatch.setattr(crud_logs, "registrar_log", fake_registrar_log)
+    
     return ws_endpoint
 
 
@@ -107,12 +119,13 @@ def test_chat_broadcast_a_otros_clientes(client, patch_ws_db, monkeypatch):
 
     with client.websocket_connect("/api/v1/ws/10/a") as ws_a:
         with client.websocket_connect("/api/v1/ws/10/b") as ws_b:
-            ws_a.send_json({"accion": "CHAT", "mensaje": "hola"})
+            ws_a.send_json({"accion": "CHAT", "tipo_chat": "mensaje", "contenido": "¡Buena jugada!"})
             msg = ws_b.receive_json()
 
     assert _assert_tipo_evento(msg, "CHAT")
     assert msg["emisor"] == "a"
-    assert msg["mensaje"] == "hola"
+    assert msg["contenido"] == "¡Buena jugada!"
+    assert msg["tipo_chat"] == "mensaje"
 
 
 def test_json_malformado_devuelve_error_unicast(client, patch_ws_db, monkeypatch):
@@ -122,7 +135,7 @@ def test_json_malformado_devuelve_error_unicast(client, patch_ws_db, monkeypatch
     monkeypatch.setattr(patch_ws_db, "obtener_estado_partida", fake_obtener_estado_partida)
 
     with client.websocket_connect("/api/v1/ws/99/a") as ws_a:
-        ws_a.send_json({"mensaje": "falta accion"})
+        ws_a.send_json({"tipo_chat": "mensaje", "contenido": "¡Buena jugada!"}) # falta accion
         msg = ws_a.receive_json()
 
     assert ("error" in msg) or _assert_tipo_evento(msg, "ERROR")
@@ -190,7 +203,7 @@ def test_aislamiento_partidas_no_filtra_mensajes(client, patch_ws_db, monkeypatc
 
     with client.websocket_connect("/api/v1/ws/1/a") as ws_a:
         with client.websocket_connect("/api/v1/ws/2/b") as ws_b:
-            ws_a.send_json({"accion": "CHAT", "mensaje": "solo partida 1"})
+            ws_a.send_json({"accion": "CHAT", "tipo_chat": "mensaje", "contenido": "¡Buena jugada!"})
 
             timeout_supported = "timeout" in inspect.signature(ws_b.receive_json).parameters
             if timeout_supported:
@@ -359,8 +372,8 @@ async def test_evento_cambio_fase_broadcast(db, monkeypatch):
         fase_actual=FasePartida.FORTIFICACION,
         fin_fase_actual=datetime.now(timezone.utc),
         user_turno_actual="u1",
-        mapa={},
-        jugadores={"u1": {"tropas_reserva": 0}},
+        mapa={"Huesca": {"owner_id": "u1", "units": 1}},
+        jugadores={"u1": {"tropas_reserva": 0, "efectos": []}},
     )
     db.add(estado)
     await db.commit()
