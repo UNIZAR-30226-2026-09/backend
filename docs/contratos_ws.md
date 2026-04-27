@@ -8,24 +8,28 @@ Para establecer la conexión, el cliente debe abrir un socket hacia la siguiente
 
 ---
 
-## 1. SISTEMA DE COMUNICACIÓN (CHAT)
+## 1. SISTEMA DE COMUNICACIÓN (CHAT Y REACCIONES)
 
 * **Dirección:** Cliente -> Servidor
 * **Payload enviado:**
     ```json
     {
       "accion": "CHAT",
-      "mensaje": "Alianza confirmada en el sector norte."
+      "tipo_chat": "mensaje",
+      "contenido": "Alianza confirmada en el sector norte."
     }
     ```
+* **Nota:** `tipo_chat` puede ser `"mensaje"` o `"reaccion"`. El `contenido` debe pertenecer a las listas de mensajes o reacciones permitidas en el backend.
 
 * **Dirección:** Servidor -> Todos los Clientes (Broadcast)
 * **Payload recibido:**
     ```json
     {
       "tipo_evento": "CHAT",
+      "tipo_chat": "mensaje",
       "emisor": "jugador_1",
-      "mensaje": "Alianza confirmada en el sector norte."
+      "contenido": "Alianza confirmada en el sector norte.",
+      "timestamp": "2026-03-22 15:30:45.123456"
     }
     ```
 
@@ -339,5 +343,74 @@ Para recibir notificaciones sociales fuera de una partida, el cliente debe abrir
         "tipo_evento": "PARTIDA_FINALIZADA",
         "ganador": "jugador_1",
         "mensaje": "La partida ha terminado. jugador_1 ha conquistado todos los territorios."
+    }
+    ```
+
+---
+
+## 8. SISTEMA DE PAUSA (Votación)
+
+Estos eventos se disparan como consecuencia de acciones HTTP en los endpoints de pausa.
+
+### 8.1. Solicitud de Pausa Iniciada
+* **Dirección:** Servidor -> Todos los Clientes (Broadcast)
+* **Descripción:** Se emite cuando un jugador inicia una solicitud de pausa mediante el endpoint HTTP correspondiente. Indica que ha comenzado un proceso de votación.
+* **Payload recibido:**
+    ```json
+    {
+        "tipo_evento": "SOLICITUD_PAUSA",
+        "solicitante": "jugador_1",
+        "mensaje": "jugador_1 ha solicitado pausar la partida. Todos deben votar."
+    }
+    ```
+
+### 8.2. Voto Registrado
+* **Dirección:** Servidor -> Todos los Clientes (Broadcast)
+* **Descripción:** Se emite cada vez que un jugador registra su voto (a favor o en contra) en una votación de pausa activa.
+* **Payload recibido:**
+    ```json
+    {
+        "tipo_evento": "VOTO_PAUSA",
+        "votante": "jugador_2",
+        "a_favor": true,
+        "votos_a_favor": 2,
+        "total_jugadores": 4
+    }
+    ```
+
+### 8.3. Pausa Rechazada
+* **Dirección:** Servidor -> Todos los Clientes (Broadcast)
+* **Descripción:** Se emite si alguien vota en contra, lo que cancela automáticamente el proceso de votación de pausa.
+* **Payload recibido:**
+    ```json
+    {
+        "tipo_evento": "PAUSA_RECHAZADA",
+        "votante": "jugador_3",
+        "mensaje": "jugador_3 ha votado en contra. La pausa ha sido cancelada."
+    }
+    ```
+
+### 8.4. Partida Pausada
+* **Dirección:** Servidor -> Todos los Clientes (Broadcast)
+* **Descripción:** Se emite cuando se alcanza la unanimidad de votos a favor. Indica al Frontend que la partida ha entrado en estado de pausa.
+* **Payload recibido:**
+    ```json
+    {
+        "tipo_evento": "PARTIDA_PAUSADA",
+        "mensaje": "La partida ha sido pausada por unanimidad."
+    }
+    ```
+
+### 8.5. Partida Reanudada
+* **Dirección:** Servidor -> Todos los Clientes (Broadcast)
+* **Descripción:** Se emite cuando la partida sale del estado de pausa y vuelve a la fase activa.
+* **Payload recibido:**
+    ```json
+    {
+        "tipo_evento": "PARTIDA_REANUDADA",
+        "nueva_fase": "ataque",
+        "jugador_activo": "jugador_1",
+        "fin_fase_utc": "2026-03-22T15:40:00Z",
+        "mensaje": "La partida ha sido reanudada."
     }
     ```
