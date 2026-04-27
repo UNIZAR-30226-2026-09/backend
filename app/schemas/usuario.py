@@ -39,6 +39,7 @@ class EstadisticaRead(BaseModel):
     num_regiones_conquistadas: int
     num_soldados_matados: int
     conquistas_por_region: dict  = Field(exclude=True)
+    posicion_ranking: int | None = None
 
     @computed_field
     @property

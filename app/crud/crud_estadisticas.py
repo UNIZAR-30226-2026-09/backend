@@ -1,5 +1,5 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, func, or_, and_
 from app.models.usuario import Estadistica
 
 async def inicializar_estadisticas(db: AsyncSession, nombre_user: str) -> Estadistica:
@@ -52,3 +52,22 @@ async def registrar_fin_partida(
     await db.commit()
     await db.refresh(stats)
     return stats
+
+
+async def obtener_posicion_ranking(db: AsyncSession, nombre_user: str) -> int | None:
+    stats = await obtener_estadisticas(db, nombre_user)
+    if not stats:
+        return None
+
+    # Tu posicion en el ranking, cuantos jugadores con más victorias hay!
+    query = select(func.count()).select_from(Estadistica).where(
+        or_(
+            Estadistica.num_partidas_ganadas > stats.num_partidas_ganadas,
+            and_(
+                Estadistica.num_partidas_ganadas == stats.num_partidas_ganadas,
+                Estadistica.num_soldados_matados > stats.num_soldados_matados
+            )
+        )
+    )
+    result = await db.execute(query)
+    return result.scalar() + 1

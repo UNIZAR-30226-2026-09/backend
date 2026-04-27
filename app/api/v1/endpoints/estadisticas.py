@@ -41,7 +41,9 @@ async def obtener_mis_estadisticas(
     if not stats:
         # Inicialización automática si es la primera vez que consulta
         stats = await crud_estadisticas.inicializar_estadisticas(db, usuario_actual.username)
-    return stats
+
+    posicion = await crud_estadisticas.obtener_posicion_ranking(db, usuario_actual.username)
+    return EstadisticaRead.model_validate(stats).model_copy(update={"posicion_ranking": posicion})
 
 # ----------------------------------------------------------------------------
 # 3. OBTENER ESTADÍSTICAS DE OTRO USUARIO
