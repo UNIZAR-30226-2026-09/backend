@@ -56,7 +56,7 @@ CONFIG_ATAQUES = {
 
     # Guerra biologica
     TipoAtaque.GRIPE_AVIAR: {
-        "duracion": 3,
+        "rondas_duracion": 3,
         "dano_por_turno": 1
     },
     TipoAtaque.VACUNA_UNIVERSAL: {
@@ -71,7 +71,7 @@ CONFIG_ATAQUES = {
     },
     TipoAtaque.FATIGA: {
         "rango": 3,
-        "duracion": 2
+        "rondas_duracion": 2
     },
 
     # Operaciones y Logistica
@@ -81,18 +81,18 @@ CONFIG_ATAQUES = {
     },
     TipoAtaque.INHIBIDOR_SENAL: {
         "rango": 2,
-        "duracion": 1
+        "rondas_duracion": 1
     },
     TipoAtaque.MURO_FRONTERIZO: {
         "rango": 1,
-        "duracion": 1
+        "rondas_duracion": 1
     },
     TipoAtaque.PROPAGANDA_SUBVERSIVA: {
-        "duracion": 2,
+        "rondas_duracion": 2,
         "robo_porcentaje": 0.50
     },
     TipoAtaque.SANCIONES_INTERNACIONALES: {
         # Se lanza a un jugador, no a un territorio.
-        "duracion": 1
+        "rondas_duracion": 1
     }
 }

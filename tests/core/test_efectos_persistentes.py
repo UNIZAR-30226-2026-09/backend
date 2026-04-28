@@ -107,7 +107,7 @@ async def test_sanciones_bloquean_refuerzos(mock_territorios, mock_actualizar, m
 @patch("app.core.logica_juego.maquina_estados.actualizar_tropas_reserva")
 @patch("app.core.logica_juego.maquina_estados.obtener_territorios_jugador")
 async def test_academia_militar_multiplica_refuerzos(mock_territorios, mock_actualizar, mock_notifier, estado_mock):
-    estado_mock.jugadores["jugador1"]["tecnologias_compradas"] = [TipoAtaque.ACADEMIA_MILITAR]
+    estado_mock.jugadores["jugador1"]["academia_activa"] = True
     mock_territorios.return_value = ["T1", "T2", "T3", "T4", "T5", "T6"] # Recibe 3 (max(3, 6//3))
     
     # 3 * 1.5 = 4.5 -> ceil(4.5) = 5

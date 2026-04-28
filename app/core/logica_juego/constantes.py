@@ -8,7 +8,7 @@ HABILIDADES = {
         "nombre": "Gripe Aviar",
         "descripcion": (
             f"Infecta un territorio enemigo. Resta {_c[TipoAtaque.GRIPE_AVIAR]['dano_por_turno']} tropas "
-            f"por turno durante {_c[TipoAtaque.GRIPE_AVIAR]['duracion']} rondas al inicio del refuerzo "
+            f"por turno durante {_c[TipoAtaque.GRIPE_AVIAR]['rondas_duracion']} rondas al inicio del refuerzo "
             f"del afectado. Si llega a 0 tropas, el territorio pasa a neutral."
         ),
         "precio": 500,
@@ -29,7 +29,7 @@ HABILIDADES = {
         "nombre": "Fatiga",
         "descripcion": (
             f"Sabotaje de hasta {_c[TipoAtaque.FATIGA]['rango']} saltos. Bloquea la generación de "
-            f"dinero e investigación del territorio durante {_c[TipoAtaque.FATIGA]['duracion']} rondas. "
+            f"dinero e investigación del territorio durante {_c[TipoAtaque.FATIGA]['rondas_duracion']} rondas. "
             f"No se acumula sobre fatiga activa."
         ),
         "precio": 1000,
@@ -42,7 +42,7 @@ HABILIDADES = {
             f"Impacto inicial del {int(_c[TipoAtaque.CORONAVIRUS]['dano_inicial'] * 100)}% y daño "
             f"recurrente del {int(_c[TipoAtaque.CORONAVIRUS]['dano_recurrente'] * 100)}% por turno. "
             f"Se expande a vecinos con un {int(_c[TipoAtaque.CORONAVIRUS]['probabilidad_expansion'] * 100)}% "
-            f"de probabilidad al final de ronda. Dura {_c[TipoAtaque.CORONAVIRUS]['rondas_duracion']} rondas por jugador."
+            f"de probabilidad al final de ronda. Dura {_c[TipoAtaque.CORONAVIRUS]['rondas_duracion']} rondas."
         ),
         "precio": 2500,
         "rama": "biologica",
@@ -66,7 +66,7 @@ HABILIDADES = {
         "descripcion": (
             f"Control táctico de hasta {_c[TipoAtaque.INHIBIDOR_SENAL]['rango']} saltos. Bloquea los "
             f"ataques convencionales desde el territorio afectado durante "
-            f"{_c[TipoAtaque.INHIBIDOR_SENAL]['duracion']} turno."
+            f"{_c[TipoAtaque.INHIBIDOR_SENAL]['rondas_duracion']} ronda."
         ),
         "precio": 1000,
         "rama": "logistica",
@@ -78,7 +78,7 @@ HABILIDADES = {
             f"Sabotaje sobre jugador enemigo. Roba el "
             f"{int(_c[TipoAtaque.PROPAGANDA_SUBVERSIVA]['robo_porcentaje'] * 100)}% de sus refuerzos "
             f"calculados y los transfiere al atacante. Dura "
-            f"{_c[TipoAtaque.PROPAGANDA_SUBVERSIVA]['duracion']} turnos de la víctima."
+            f"{_c[TipoAtaque.PROPAGANDA_SUBVERSIVA]['rondas_duracion']} turnos de la víctima."
         ),
         "precio": 1000,
         "rama": "logistica",
@@ -88,7 +88,7 @@ HABILIDADES = {
         "nombre": "Muro Fronterizo",
         "descripcion": (
             f"Defensa fronteriza de rango exacto {_c[TipoAtaque.MURO_FRONTERIZO]['rango']} salto. "
-            f"Sella la frontera en ambos sentidos durante {_c[TipoAtaque.MURO_FRONTERIZO]['duracion']} turno. "
+            f"Sella la frontera en ambos sentidos durante {_c[TipoAtaque.MURO_FRONTERIZO]['rondas_duracion']} ronda. "
             f"No bloquea la fortificación propia."
         ),
         "precio": 1500,
@@ -99,8 +99,8 @@ HABILIDADES = {
         "nombre": "Sanciones Internacionales",
         "descripcion": (
             f"Ataque económico sobre jugador enemigo. Su siguiente refuerzo pasa a 0 tropas con "
-            f"prioridad sobre Academia y Propaganda. Dura "
-            f"{_c[TipoAtaque.SANCIONES_INTERNACIONALES]['duracion']} turno."
+            f"priority sobre Academia y Propaganda. Dura "
+            f"{_c[TipoAtaque.SANCIONES_INTERNACIONALES]['rondas_duracion']} ronda."
         ),
         "precio": 2500,
         "rama": "logistica",
