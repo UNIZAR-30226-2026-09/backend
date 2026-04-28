@@ -352,6 +352,15 @@ async def reanudar_partida(
     if partida.creador != usuario_actual.username:
         raise HTTPException(status_code=403, detail="Solo el host puede reanudar la partida")
 
+    jugadores_vivos = await crud_partidas.obtener_jugadores_vivos(db, partida.id)
+    sala_ws = manager.active_connections.get(partida.id, {})
+    
+    if len(sala_ws) < len(jugadores_vivos):
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Faltan jugadores por conectarse. Hay {len(sala_ws)}/{len(jugadores_vivos)} listos."
+        )
+
     estado = await crud_partidas.obtener_estado_partida(db, partida.id)
     if not estado:
         raise HTTPException(status_code=404, detail="Estado de partida no encontrado")
