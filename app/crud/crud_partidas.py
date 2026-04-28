@@ -259,7 +259,6 @@ async def obtener_partida_activa_del_jugador(
             Partida.estado.in_([
                 EstadosPartida.CREANDO,
                 EstadosPartida.ACTIVA,
-                EstadosPartida.PAUSADA,
             ])
         )
     )
