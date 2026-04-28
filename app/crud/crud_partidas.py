@@ -374,8 +374,27 @@ async def actualizar_creador_partida(
 
 
 # ----------------------------------------------------------------------------
-# 13. ELIMINAR PARTIDA
+# 14. ELIMINAR PARTIDA
 # ----------------------------------------------------------------------------
 async def eliminar_partida(db: AsyncSession, partida_id: int) -> None:
     await db.execute(delete(Partida).where(Partida.id == partida_id))
     await db.commit()
+
+
+# ----------------------------------------------------------------------------
+# 15. OBTENER PARTIDAS PAUSADAS DE UN JUGADOR
+# ----------------------------------------------------------------------------
+async def obtener_partidas_pausadas_usuario(db: AsyncSession, username: str) -> list[Partida]:
+    """
+    Devuelve la lista de partidas en las que participa el usuario y están en estado PAUSADA.
+    """
+    query = (
+        select(Partida)
+        .join(JugadoresPartida, Partida.id == JugadoresPartida.partida_id)
+        .where(
+            JugadoresPartida.usuario_id == username,
+            Partida.estado == EstadosPartida.PAUSADA
+        )
+    )
+    resultado = await db.execute(query)
+    return resultado.scalars().all()

@@ -89,6 +89,16 @@ async def listar_partidas_publicas(
     """
     return await crud_partidas.obtener_partidas_publicas(db)
 
+@router.get("/pausadas", response_model=list[PartidaRead])
+async def listar_partidas_pausadas(
+    usuario_actual: User = Depends(obtener_usuario_actual),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Devuelve todas las partidas en las que el usuario participa y están pausadas.
+    """
+    return await crud_partidas.obtener_partidas_pausadas_usuario(db, usuario_actual.username)
+
 @router.post("/{codigo}/unirse", response_model=UnirseOut)
 async def unirse_partida(
     codigo: str,
