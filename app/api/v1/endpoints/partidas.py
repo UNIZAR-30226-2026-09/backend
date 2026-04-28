@@ -295,6 +295,7 @@ async def obtener_mi_partida_activa(
     estado = await crud_partidas.obtener_estado_partida(db, entrada.partida_id)
 
     return {
+        "tiene_partida_activa": True,
         "partida_id": partida.id,
         "estado": partida.estado,
         "codigo_invitacion": partida.codigo_invitacion,
