@@ -111,9 +111,6 @@ def actualizar_estado_efectos_territorio(data, territorio_id, num_jugadores) -> 
 def expandir_coronavirus(territorio_id, efecto, num_jugadores):
     prob = CONFIG_ATAQUES[TipoAtaque.CORONAVIRUS]["probabilidad_expansion"]
 
-    # Duracion depende del numero de jugadores
-    dur = CONFIG_ATAQUES[TipoAtaque.CORONAVIRUS]["rondas_duracion"] * num_jugadores
-
     vecinos = map_calculator.obtener_vecinos(territorio_id)
     contagios = []
 
@@ -123,7 +120,8 @@ def expandir_coronavirus(territorio_id, efecto, num_jugadores):
                 "destino": vecino,
                 "efecto": EfectoActivo(
                     tipo_efecto=TipoEfecto.CORONAVIRUS,
-                    duracion_restante=dur,
+                    # Duracion es la que le quede, no se recalcula
+                    duracion_restante=efecto.duracion_restante,
                     origen_jugador_id=efecto.origen_jugador_id
                 )
             })
