@@ -257,7 +257,7 @@ async def asignar_tropas_reserva(estado: EstadoPartida, db: AsyncSession) -> int
     tropas_recibidas += bonus_regiones
 
     # Si tengo ACADEMIA_MILITAR, se me multiplican las tropas.
-    if TipoAtaque.ACADEMIA_MILITAR in jugador.get("tecnologias_compradas", []):
+    if jugador.get("academia_activa"):
         motivo_especial = "academia"
         tropas_recibidas = calcular_refuerzos_academia(tropas_recibidas)
 

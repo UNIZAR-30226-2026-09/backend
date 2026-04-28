@@ -241,6 +241,19 @@ def ejecutar_fatiga(estado, atacante_id: str, origen: str, destino: str):
         ]
     }
 
+@registrar_ataque(TipoAtaque.ACADEMIA_MILITAR)
+def ejecutar_academia_militar(estado, atacante_id: str, origen: str, destino: str):
+    jugador = estado.jugadores.get(atacante_id)
+    if jugador.get("academia_activa"):
+        raise ValueError("La Academia Militar ya está activa.")
+    jugador["academia_activa"] = True
+    return {
+        "afectados": [{
+            "jugador_id": atacante_id,
+            "efecto_añadido": TipoAtaque.ACADEMIA_MILITAR
+        }]
+    }
+
 
 @registrar_ataque(TipoAtaque.INHIBIDOR_SENAL)
 def ejecutar_inhibidor(estado, atacante_id: str, origen: str, destino: str):
