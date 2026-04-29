@@ -1,6 +1,7 @@
 from pydantic import computed_field, BaseModel, EmailStr, Field, ConfigDict
 from typing import Optional
 from app.models.usuario import EstadoAmistad # Pillamos el enum directamente del modelo
+from app.core.map_state import game_map_state
 
  
 # USUARIOS
@@ -54,7 +55,9 @@ class EstadisticaRead(BaseModel):
     def region_mas_conquistada(self) -> str | None:
         if not self.conquistas_por_region:
             return None
-        return max(self.conquistas_por_region, key=self.conquistas_por_region.get)
+        comarca_id = max(self.conquistas_por_region, key=self.conquistas_por_region.get)
+        comarca = game_map_state.comarcas.get(comarca_id)
+        return comarca.name
 
     model_config = ConfigDict(from_attributes=True)
 
