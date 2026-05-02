@@ -587,6 +587,8 @@ async def asignar_trabajo(partida_id: int, datos: AsignarTrabajoIn, usuario_actu
     flag_modified(estado, "mapa")
     await db.commit()
 
+    await notifier.enviar_actualizacion_territorio(partida_id, datos.territorio_id, estado.mapa[datos.territorio_id])
+
     return {"mensaje": f"El territorio {datos.territorio_id} se ha puesto a trabajar."}
 
 @router.post("/{partida_id}/investigar")
@@ -609,6 +611,8 @@ async def asignar_investigacion(partida_id: int, datos: AsignarInvestigacionIn, 
     flag_modified(estado, "jugadores")
     flag_modified(estado, "mapa")
     await db.commit()
+
+    await notifier.enviar_actualizacion_territorio(partida_id, datos.territorio_id, estado.mapa[datos.territorio_id])
 
     return {"mensaje": f"El territorio {datos.territorio_id} está investigando {datos.habilidad_id}."}
 
