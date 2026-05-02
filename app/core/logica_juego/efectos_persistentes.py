@@ -1,4 +1,5 @@
 import random
+import math
 
 from app.core.map_state import map_calculator
 from app.schemas.estado_juego import EfectoActivo
@@ -104,7 +105,10 @@ def actualizar_estado_efectos_territorio(data, territorio_id, num_jugadores) -> 
         
         # si es coronaviros, expandimos
         if efecto.tipo_efecto == TipoEfecto.CORONAVIRUS:
-            contagios += expandir_coronavirus(territorio_id, efecto, num_jugadores)
+            tropas = data.get("units", 0)
+            dano_siguiente = math.ceil(tropas * CONFIG_ATAQUES[TipoAtaque.CORONAVIRUS]["dano_recurrente"])
+            if tropas - dano_siguiente > 0:
+                contagios += expandir_coronavirus(territorio_id, efecto, num_jugadores)
         
         # Reducidos y comprobamos fin
         if reducir_y_mantener(efecto):
