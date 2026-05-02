@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import flag_modified
 
-from app.core.map_state import map_calculator
+from app.core.map_state import map_calculator, game_map_state
 from app.core.logica_juego.validaciones import validar_ataque_convencional
 from app.core.logica_juego.combate import resolver_ataque_completo
 from app.core.logica_juego.maquina_estados import avanzar_fase

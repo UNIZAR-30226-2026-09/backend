@@ -30,6 +30,7 @@ class JugadorBase(BaseModel):
     tecnologias_compradas: List[str] = Field(default_factory=list)
     bajas_causadas: int = Field(default=0)
     historial_conquistas: Dict[str, int] = Field(default_factory=dict)
+    regiones_dominadas: List[str] = Field(default_factory=list)
     efectos: List[EfectoActivo] = Field(default_factory=list)
 
     ha_lanzado_especial: bool = Field(default=False)

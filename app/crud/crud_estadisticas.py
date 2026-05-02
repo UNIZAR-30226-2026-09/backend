@@ -23,31 +23,35 @@ async def obtener_ranking_global(db: AsyncSession, limite: int = 10) -> list[Est
     return result.scalars().all()
 
 async def registrar_fin_partida(
-    db: AsyncSession, 
-    nombre_user: str, 
-    es_ganador: bool, 
-    regiones_conquistadas: dict[str, int] = None,
+    db: AsyncSession,
+    nombre_user: str,
+    es_ganador: bool,
+    comarcas_conquistadas: dict[str, int] = None,
+    regiones_dominadas: list[str] = None,
     soldados_matados_en_partida: int = 0
 ) -> Estadistica:
-    
+
     stats = await obtener_estadisticas(db, nombre_user)
     if not stats:
         stats = await inicializar_estadisticas(db, nombre_user)
 
     stats.num_partidas_jugadas += 1
     stats.num_soldados_matados += soldados_matados_en_partida
-    
+
     if es_ganador:
         stats.num_partidas_ganadas += 1
 
-    if regiones_conquistadas:
-        stats.num_regiones_conquistadas += sum(regiones_conquistadas.values())
-        
-        nuevo_historial = dict(stats.conquistas_por_region or {})
-        for region, cantidad in regiones_conquistadas.items():
-            nuevo_historial[region] = nuevo_historial.get(region, 0) + cantidad
-            
-        stats.conquistas_por_region = nuevo_historial
+    if comarcas_conquistadas:
+        stats.num_comarcas_conquistadas += sum(comarcas_conquistadas.values())
+
+        nuevo_historial = dict(stats.conquistas_por_comarca or {})
+        for comarca, cantidad in comarcas_conquistadas.items():
+            nuevo_historial[comarca] = nuevo_historial.get(comarca, 0) + cantidad
+
+        stats.conquistas_por_comarca = nuevo_historial
+
+    if regiones_dominadas:
+        stats.num_regiones_conquistadas += len(set(regiones_dominadas))
 
     await db.commit()
     await db.refresh(stats)

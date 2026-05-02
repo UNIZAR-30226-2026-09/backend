@@ -66,6 +66,8 @@ async def avanzar_fase(
     # Cambio de jugador si se vuelve a Refuerzo
     if nueva_fase == FasePartida.REFUERZO:
 
+        actualizar_regiones_dominadas(estado, estado.user_turno_actual)
+
         await procesar_efectos_fin_de_turno(estado)
 
         estado.user_turno_actual = await calcular_siguiente_jugador(partida_id, estado.user_turno_actual, db)
@@ -288,6 +290,20 @@ async def asignar_tropas_reserva(estado: EstadoPartida, db: AsyncSession) -> int
     )
 
     return tropas_recibidas
+
+def actualizar_regiones_dominadas(estado: EstadoPartida, jugador_id: str):
+    """Al final del turno, registra las regiones que el jugador controla completamente."""
+    jugador = estado.jugadores.get(jugador_id, {})
+    territorios_propios = set(obtener_territorios_jugador(estado.mapa, jugador_id))
+    regiones_dominadas = jugador.get("regiones_dominadas", [])
+
+    for region_id, datos_region in game_map_state.regions.items():
+        comarcas_region = datos_region.comarcas if hasattr(datos_region, "comarcas") else datos_region.get("comarcas", [])
+        if all(c in territorios_propios for c in comarcas_region) and region_id not in regiones_dominadas:
+            regiones_dominadas.append(region_id)
+
+    jugador["regiones_dominadas"] = regiones_dominadas
+
 
 def territorio_esta_fatigado(territorio_data: dict) -> bool:
     """

@@ -36,10 +36,10 @@ class EstadisticaRead(BaseModel):
     nombre_user: str
     num_partidas_jugadas: int
     num_partidas_ganadas: int
-    num_continentes_conquistados: int
     num_regiones_conquistadas: int
+    num_comarcas_conquistadas: int
     num_soldados_matados: int
-    conquistas_por_region: dict  = Field(exclude=True)
+    conquistas_por_comarca: dict  = Field(exclude=True)
     posicion_ranking: int | None = None
 
     @computed_field
@@ -52,10 +52,10 @@ class EstadisticaRead(BaseModel):
 
     @computed_field
     @property
-    def region_mas_conquistada(self) -> str | None:
-        if not self.conquistas_por_region:
+    def comarca_mas_conquistada(self) -> str | None:
+        if not self.conquistas_por_comarca:
             return None
-        comarca_id = max(self.conquistas_por_region, key=self.conquistas_por_region.get)
+        comarca_id = max(self.conquistas_por_comarca, key=self.conquistas_por_comarca.get)
         comarca = game_map_state.comarcas.get(comarca_id)
         return comarca.name
 

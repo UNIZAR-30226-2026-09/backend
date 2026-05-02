@@ -339,14 +339,16 @@ async def verificar_y_finalizar_partida(db: AsyncSession, partida_id: int) -> Op
                 datos_partida = estado.jugadores.get(p.usuario_id, {}) if estado else {}
                 
                 # vas sumando estos valores al JSON 'jugadores' del estado.
-                regiones = datos_partida.get("historial_conquistas", {}) 
+                comarcas = datos_partida.get("historial_conquistas", {})
+                regiones = datos_partida.get("regiones_dominadas", [])
                 bajas = datos_partida.get("bajas_causadas", 0)
 
                 await crud_estadisticas.registrar_fin_partida(
                     db=db,
                     nombre_user=p.usuario_id,
                     es_ganador=es_ganador,
-                    regiones_conquistadas=regiones,
+                    comarcas_conquistadas=comarcas,
+                    regiones_dominadas=regiones,
                     soldados_matados_en_partida=bajas
                 )
             # ---------------------------------------------------
