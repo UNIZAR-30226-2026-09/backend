@@ -350,6 +350,10 @@ async def ejecutar_ataque_especial(
         raise HTTPException(
             status_code=400, detail="Solo puedes realizar un ataque especial por turno.")
 
+    t_origen_especial = estado_partida.mapa.get(ataque_in.origen, {})
+    if t_origen_especial.get("estado_bloqueo") is not None:
+        raise HTTPException(400, "No puedes atacar desde un territorio que está trabajando o investigando.")
+
     propietarios_antes = {
         tid: data["owner_id"]
         for tid, data in estado_partida.mapa.items()

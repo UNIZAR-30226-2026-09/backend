@@ -76,6 +76,9 @@ def validar_ataque_convencional(
     validar_propiedad_territorio(t_origen, jugador_id, "origen")
     validar_ataque_no_propio(t_origen, t_destino)
 
+    if t_origen.estado_bloqueo is not None:
+        raise ValueError("No puedes atacar desde un territorio que está trabajando o investigando.")
+
     if t_origen.units < 2:
         raise ValueError("Necesitas al menos 2 tropas en el origen para poder atacar.")
     
