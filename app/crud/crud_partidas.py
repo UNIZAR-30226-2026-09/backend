@@ -256,6 +256,7 @@ async def obtener_partida_activa_del_jugador(
         .join(Partida, JugadoresPartida.partida_id == Partida.id)
         .where(
             JugadoresPartida.usuario_id == username,
+            JugadoresPartida.estado_jugador != EstadoJugador.MUERTO,
             Partida.estado.in_([
                 EstadosPartida.CREANDO,
                 EstadosPartida.ACTIVA,
