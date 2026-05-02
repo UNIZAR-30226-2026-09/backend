@@ -214,7 +214,6 @@ async def asignar_tropas_reserva(estado: EstadoPartida, db: AsyncSession) -> int
     estado.jugadores[jugador_id]["ha_lanzado_especial"] = False
 
     jugador = estado.jugadores.get(jugador_id, {})
-
     motivo_especial = "normal"
 
     # Si me han aplicado una SANCION, recibo 0 tropas
@@ -267,8 +266,8 @@ async def asignar_tropas_reserva(estado: EstadoPartida, db: AsyncSession) -> int
         motivo_especial = "propaganda"
 
         if beneficiario_id in estado.jugadores:
-            estado.jugadores[beneficiario_id]["tropas_reserva"] += robadas
-            await actualizar_tropas_reserva(db, estado, beneficiario_id, estado.jugadores[beneficiario_id]["tropas_reserva"])
+
+            await actualizar_tropas_reserva(db, estado, beneficiario_id, robadas)
         
             await notifier.enviar_propaganda_activada(
                 partida_id=estado.partida_id,
