@@ -47,7 +47,7 @@ async def test_gripe_aviar_neutraliza_territorio_con_ultima_tropa(mock_notifier_
     estado_mock.mapa["T1"]["units"] = 1
     estado_mock.mapa["T1"]["efectos"].append({
         "tipo_efecto": TipoEfecto.GRIPE_AVIAR,
-        "duracion_restante": 2,
+        "duracion": 2,
         "origen_jugador_id": "jugador2"
     })
 
@@ -63,7 +63,7 @@ async def test_gripe_aviar_neutraliza_territorio_con_ultima_tropa(mock_notifier_
 async def test_gripe_aviar_dano_por_turno(mock_notifier_ws, mock_flag, estado_mock):
     estado_mock.mapa["T1"]["efectos"].append({
         "tipo_efecto": TipoEfecto.GRIPE_AVIAR,
-        "duracion_restante": 2,
+        "duracion": 2,
         "origen_jugador_id": "jugador2"
     })
 
@@ -77,7 +77,7 @@ async def test_gripe_aviar_dano_por_turno(mock_notifier_ws, mock_flag, estado_mo
 async def test_expiracion_efectos(estado_mock):
     estado_mock.mapa["T1"]["efectos"].append({
         "tipo_efecto": TipoEfecto.FATIGA,
-        "duracion_restante": 1,
+        "duracion": 1,
         "origen_jugador_id": "jugador2"
     })
 
@@ -92,7 +92,7 @@ async def test_expiracion_efectos(estado_mock):
 async def test_sanciones_bloquean_refuerzos(mock_territorios, mock_actualizar, mock_notifier, estado_mock):
     estado_mock.jugadores["jugador1"]["efectos"].append({
         "tipo_efecto": TipoEfecto.SANCIONES, 
-        "duracion_restante": 1, 
+        "duracion": 1, 
         "origen_jugador_id": "jugador2"
     })
     mock_territorios.return_value = ["T1", "T2", "T3", "T4", "T5", "T6"] # Debería recibir 2 (pero minimo 3)
@@ -122,7 +122,7 @@ async def test_fatiga_bloquea_gestion(mock_flag, estado_mock):
     estado_mock.mapa["T1"]["estado_bloqueo"] = "trabajo"
     estado_mock.mapa["T1"]["efectos"].append({
         "tipo_efecto": TipoEfecto.FATIGA, 
-        "duracion_restante": 1, 
+        "duracion": 1, 
         "origen_jugador_id": "jugador2"
     })
     
@@ -147,7 +147,7 @@ async def test_propaganda_subversiva_roba_colocacion(mock_territorios, mock_prop
     }
     estado_mock.jugadores["jugador1"]["efectos"].append({
         "tipo_efecto": TipoEfecto.PROPAGANDA,
-        "duracion_restante": 2,
+        "duracion": 2,
         "origen_jugador_id": "jugador2"  # Atacante/Beneficiario
     })
     estado_mock.user_turno_actual = "jugador1" # Víctima

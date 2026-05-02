@@ -4,9 +4,23 @@ from app.models.usuario import User
 from app.crud import crud_estadisticas
 from app.schemas.usuario import EstadisticaRead
 
+# IMPORTANTE: Importamos el estado del mapa para leer IDs válidos
+from app.core.map_state import game_map_state 
+
 @pytest.mark.asyncio
 async def test_estadisticas_calculos_y_ranking(db: AsyncSession):
     
+    # ---------------------------------------------------------
+    # 0. SETUP DE MAPA: Cogemos 3 IDs reales para el test
+    # ---------------------------------------------------------
+    ids_reales = list(game_map_state.comarcas.keys())
+    id_1 = ids_reales[0] # Sustituto de "Zaragoza"
+    id_2 = ids_reales[1] # Sustituto de "Huesca"
+    id_3 = ids_reales[2] # Sustituto de "Teruel"
+    
+    # Sacamos el nombre real de la comarca 1 para verificar el modelo
+    nombre_esperado_id_1 = game_map_state.comarcas[id_1].name
+
     # ---------------------------------------------------------
     # 1. SETUP: Creamos tres usuarios para la prueba
     # ---------------------------------------------------------
@@ -24,19 +38,19 @@ async def test_estadisticas_calculos_y_ranking(db: AsyncSession):
     for _ in range(3):
         await crud_estadisticas.registrar_fin_partida(
             db, "JugadorPro", es_ganador=True, 
-            regiones_conquistadas={"Zaragoza": 1, "Huesca": 1}, 
+            regiones_conquistadas={id_1: 1, id_2: 1}, 
             soldados_matados_en_partida=20
         )
 
     await crud_estadisticas.registrar_fin_partida(
         db, "JugadorPro", es_ganador=False, 
-        regiones_conquistadas={"Zaragoza": 2}, 
+        regiones_conquistadas={id_1: 2}, 
         soldados_matados_en_partida=40
     )
 
     await crud_estadisticas.registrar_fin_partida(
         db, "JugadorMedio", es_ganador=True, 
-        regiones_conquistadas={"Teruel": 3}, 
+        regiones_conquistadas={id_3: 3}, 
         soldados_matados_en_partida=150
     )
     await crud_estadisticas.registrar_fin_partida(
@@ -60,9 +74,10 @@ async def test_estadisticas_calculos_y_ranking(db: AsyncSession):
     pro_schema = EstadisticaRead.model_validate(stats_pro)
     
     assert pro_schema.winrate == 75.0
-    assert pro_schema.region_mas_conquistada == "Zaragoza"
+    # Verificamos contra el nombre dinámico y la clave dinámica
+    assert pro_schema.region_mas_conquistada == nombre_esperado_id_1
     assert pro_schema.num_soldados_matados == 100
-    assert pro_schema.conquistas_por_region["Zaragoza"] == 5
+    assert pro_schema.conquistas_por_region[id_1] == 5
 
     stats_novato = await crud_estadisticas.obtener_estadisticas(db, "JugadorNovato")
     novato_schema = EstadisticaRead.model_validate(stats_novato)
@@ -79,5 +94,3 @@ async def test_estadisticas_calculos_y_ranking(db: AsyncSession):
     assert ranking_nombres[0] == "JugadorPro"   # 3 Victorias
     assert ranking_nombres[1] == "JugadorMedio" # 1 Victoria
     assert ranking_nombres[2] == "JugadorNovato" # 0 Victorias
-
-    print("\n✅ ¡Módulo de Estadísticas Validado! El cálculo y el ranking funcionan perfecto.")

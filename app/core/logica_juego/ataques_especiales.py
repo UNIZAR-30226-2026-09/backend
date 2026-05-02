@@ -152,7 +152,7 @@ def ejecutar_gripe_aviar(estado, atacante_id: str, origen: str, destino: str):
 
     nuevo_efecto = EfectoActivo(
         tipo_efecto=TipoEfecto.GRIPE_AVIAR, 
-        duracion_restante=duracion_turnos, 
+        duracion=duracion_turnos, 
         origen_jugador_id=atacante_id
     )
     estado.mapa[destino]["efectos"].append(nuevo_efecto.model_dump())
@@ -210,7 +210,7 @@ def ejecutar_coronavirus(estado, atacante_id: str, origen: str, destino: str):
 
     nuevo_efecto = EfectoActivo(
         tipo_efecto=TipoEfecto.CORONAVIRUS, 
-        duracion_restante=duracion_turnos, 
+        duracion=duracion_turnos, 
         origen_jugador_id=atacante_id
     )
     estado.mapa[destino]["efectos"].append(nuevo_efecto.model_dump())
@@ -233,7 +233,7 @@ def ejecutar_fatiga(estado, atacante_id: str, origen: str, destino: str):
 
     nuevo_efecto = EfectoActivo(
         tipo_efecto=TipoEfecto.FATIGA, 
-        duracion_restante=duracion_turnos, 
+        duracion=duracion_turnos, 
         origen_jugador_id=atacante_id
     )
     estado.mapa[destino]["efectos"].append(nuevo_efecto.model_dump())
@@ -270,7 +270,7 @@ def ejecutar_inhibidor(estado, atacante_id: str, origen: str, destino: str):
     duracion_turnos = calcular_duracion(len(estado.jugadores), cfg["rondas_duracion"])
 
 
-    nuevo_efecto = EfectoActivo(tipo_efecto=TipoEfecto.INHIBIDOR_SENAL, duracion_restante=duracion_turnos, origen_jugador_id=atacante_id)
+    nuevo_efecto = EfectoActivo(tipo_efecto=TipoEfecto.INHIBIDOR_SENAL, duracion=duracion_turnos, origen_jugador_id=atacante_id)
     estado.mapa[destino]["efectos"].append(nuevo_efecto.model_dump())
 
     return {
@@ -303,7 +303,7 @@ def ejecutar_propaganda(estado, atacante_id: str, origen: str, destino: str):
 
     jugador_objetivo["efectos"].append({
         "tipo_efecto": TipoEfecto.PROPAGANDA, 
-        "duracion_restante": duracion_turnos, 
+        "duracion": duracion_turnos, 
         "origen_jugador_id": atacante_id
     })
 
@@ -324,11 +324,11 @@ def ejecutar_muro(estado, atacante_id: str, origen: str, destino: str):
     duracion_turnos = calcular_duracion(len(estado.jugadores), cfg["rondas_duracion"])
 
     # El muro bloquea ambas direcciones de la frontera
-    efecto_origen = EfectoActivo(tipo_efecto=TipoEfecto.MURO, duracion_restante=duracion_turnos, origen_jugador_id=atacante_id).model_dump()
+    efecto_origen = EfectoActivo(tipo_efecto=TipoEfecto.MURO, duracion=duracion_turnos, origen_jugador_id=atacante_id).model_dump()
     efecto_origen["bloquea_hacia"] = destino
     estado.mapa[origen]["efectos"].append(efecto_origen)
 
-    efecto_destino = EfectoActivo(tipo_efecto=TipoEfecto.MURO, duracion_restante=duracion_turnos, origen_jugador_id=atacante_id).model_dump()
+    efecto_destino = EfectoActivo(tipo_efecto=TipoEfecto.MURO, duracion=duracion_turnos, origen_jugador_id=atacante_id).model_dump()
     efecto_destino["bloquea_hacia"] = origen
     estado.mapa[destino]["efectos"].append(efecto_destino)
 
@@ -369,7 +369,7 @@ def ejecutar_sanciones(estado, atacante_id: str, origen: str, destino: str):
 
     jugador_objetivo["efectos"].append({
         "tipo_efecto": TipoEfecto.SANCIONES, 
-        "duracion_restante": duracion_turnos, 
+        "duracion": duracion_turnos, 
         "origen_jugador_id": atacante_id
     })
 

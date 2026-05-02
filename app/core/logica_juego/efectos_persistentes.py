@@ -47,7 +47,7 @@ async def procesar_efectos_inicio_turno(estado, jugador_id: str):
         if data.get("units", 0) <= 0:
             data["units"] = 0
             data["efectos"] = []
-            data["owner_id"] = None 
+            data["owner_id"] = "neutral"
 
         if data.get("units", 0) != tropas_antes:
 
@@ -126,7 +126,7 @@ def expandir_coronavirus(territorio_id, efecto, num_jugadores):
                 "efecto": EfectoActivo(
                     tipo_efecto=TipoEfecto.CORONAVIRUS,
                     # Duracion es la que le quede, no se recalcula
-                    duracion_restante=efecto.duracion_restante,
+                    duracion=efecto.duracion,
                     origen_jugador_id=efecto.origen_jugador_id
                 )
             })
@@ -177,5 +177,5 @@ def procesar_efectos_genericos(efectos):
 
 
 def reducir_y_mantener(efecto):
-    efecto.duracion_restante -= 1
-    return efecto.duracion_restante > 0
+    efecto.duracion -= 1
+    return efecto.duracion > 0

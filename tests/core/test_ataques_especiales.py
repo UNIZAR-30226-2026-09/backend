@@ -61,8 +61,8 @@ def test_bomba_racimo_area(mock_vecinos, mock_dist, estado_mock):
 
 def test_vacuna_universal_limpia_enfermedades(estado_mock):
     estado_mock.mapa["T1"]["efectos"] = [
-        {"tipo_efecto": TipoEfecto.GRIPE_AVIAR, "duracion_restante": 3, "origen_jugador_id": "jugador2"},
-        {"tipo_efecto": TipoEfecto.PROPAGANDA, "duracion_restante": 2, "origen_jugador_id": "jugador2"}
+        {"tipo_efecto": TipoEfecto.GRIPE_AVIAR, "duracion": 3, "origen_jugador_id": "jugador2"},
+        {"tipo_efecto": TipoEfecto.PROPAGANDA, "duracion": 2, "origen_jugador_id": "jugador2"}
     ]
     
     ejecutar_vacuna(estado_mock, "jugador1", "T1", "T1")

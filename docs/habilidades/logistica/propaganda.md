@@ -16,7 +16,7 @@ Se lanza sobre un **jugador** (no sobre un territorio). Durante la siguiente fas
 ## Flujo de Ejecución
 1. **Lanzamiento** (`ejecutar_propaganda`): Se añade el efecto al dict del jugador víctima.
 2. **Activación** (`asignar_tropas_reserva`): Al inicio del refuerzo de la víctima, `calcular_robo_propaganda()` detecta el efecto, calcula las tropas robadas y las transfiere al beneficiario.
-3. **Expiración** (`actualizar_efectos_jugadores`): Se decrementa `duracion_restante` al final de la ronda. Cuando llega a 0, el efecto se elimina.
+3. **Expiración** (`actualizar_efectos_jugadores`): Se decrementa `duracion` al final de la ronda. Cuando llega a 0, el efecto se elimina.
 
 ## Integración con WebSockets
 1. **Lanzamiento:** Se emite `ATAQUE_ESPECIAL` (Broadcast). El campo `resultado` incluye el jugador afectado:

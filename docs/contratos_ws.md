@@ -246,7 +246,7 @@ Para recibir notificaciones sociales fuera de una partida, el cliente debe abrir
             "efectos": [
                 {
                     "tipo_efecto": "gripe_aviar",
-                    "duracion_restante": 2,
+                    "duracion": 2,
                     "origen_jugador_id": "jugador_1"
                 }
             ]

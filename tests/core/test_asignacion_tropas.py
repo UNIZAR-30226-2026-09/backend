@@ -125,7 +125,7 @@ async def test_avanzar_fase_tick_gripe_aviar_elimina_jugador(db: AsyncSession, m
         "T_u1": {"owner_id": "u1", "units": 5, "efectos": [], "estado_bloqueo": None},
         "T_u2": {
             "owner_id": "u2", "units": 1,
-            "efectos": [{"tipo_efecto": TipoEfecto.GRIPE_AVIAR, "duracion_restante": 2, "origen_jugador_id": "u1"}],
+            "efectos": [{"tipo_efecto": TipoEfecto.GRIPE_AVIAR, "duracion": 2, "origen_jugador_id": "u1"}],
             "estado_bloqueo": None,
         },
     }
