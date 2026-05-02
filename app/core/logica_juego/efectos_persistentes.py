@@ -44,6 +44,11 @@ async def procesar_efectos_inicio_turno(estado, jugador_id: str):
                 # Quita Y% de tropas
                 aplicar_dano_coronavirus(data) 
 
+        if data.get("units", 0) <= 0:
+            data["units"] = 0
+            data["efectos"] = []
+            data["owner_id"] = None 
+
         if data.get("units", 0) != tropas_antes:
 
             await notifier.enviar_actualizacion_territorio(

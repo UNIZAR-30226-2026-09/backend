@@ -324,7 +324,6 @@ async def verificar_y_finalizar_partida(db: AsyncSession, partida_id: int) -> Op
             partida.estado = EstadosPartida.FINALIZADA
             partida.ganador = ganador_username
             
-            # --- TAREA 19: REGISTRAR ESTADÍSTICAS HISTÓRICAS ---
             from app.crud import crud_estadisticas
             
             # Obtenemos el estado para sacar los datos de la partida

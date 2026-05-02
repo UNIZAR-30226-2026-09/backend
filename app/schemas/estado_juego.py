@@ -3,7 +3,7 @@ from typing import Dict, List, Optional
 
 class EfectoActivo(BaseModel):
     tipo_efecto: str
-    duracion_restante: int
+    duracion: int
     origen_jugador_id: str
     bloquea_hacia: Optional[str] = None
 
