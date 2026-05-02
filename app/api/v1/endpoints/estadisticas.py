@@ -23,7 +23,10 @@ async def obtener_ranking(
     Pydantic calculará automáticamente el 'winrate' de cada jugador.
     """
     ranking = await crud_estadisticas.obtener_ranking_global(db, limite=limite)
-    return ranking
+    return [
+        RankingItemOut.model_validate(stat).model_copy(update={"avatar": stat.usuario.avatar})
+        for stat in ranking
+    ]
 
 # ----------------------------------------------------------------------------
 # 2. OBTENER MIS ESTADÍSTICAS (Usuario Autenticado)

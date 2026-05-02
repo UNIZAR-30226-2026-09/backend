@@ -98,6 +98,7 @@ class UnirseOut(BaseModel):
     mensaje: str
     jugadores_en_sala: list[JugadorPartidaRead]
     creador: str
+    avatares: dict[str, str] = {}
 
 class AbandonarOut(BaseModel):
     mensaje: str

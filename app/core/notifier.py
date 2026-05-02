@@ -9,14 +9,16 @@ class GameNotifier:
         mapa: dict,
         jugadores: dict,
         turno_de: str,
-        fin_fase: object | None = None
+        fin_fase: object | None = None,
+        avatares: dict[str, str] | None = None
     ):
         payload = {
             "tipo_evento": "PARTIDA_INICIADA",
             "mapa": mapa,
             "jugadores": jugadores,
             "turno_de": turno_de,
-            "fase_actual": "refuerzo"
+            "fase_actual": "refuerzo",
+            "avatares": avatares or {}
         }
         if fin_fase is not None:
             payload["fin_fase_utc"] = fin_fase.isoformat()
@@ -39,10 +41,11 @@ class GameNotifier:
         }, partida_id)
 
     @staticmethod
-    async def notificar_nuevo_jugador(partida_id: int, username: str):
+    async def notificar_nuevo_jugador(partida_id: int, username: str, avatar: str = "/static/perfiles/default.png"):
         await manager.broadcast({
             "tipo_evento": "NUEVO_JUGADOR",
             "jugador": username,
+            "avatar": avatar,
         }, partida_id)
 
 

@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, func, or_, and_
+from sqlalchemy.orm import selectinload
 from app.models.usuario import Estadistica
 
 async def inicializar_estadisticas(db: AsyncSession, nombre_user: str) -> Estadistica:
@@ -15,7 +16,7 @@ async def obtener_estadisticas(db: AsyncSession, nombre_user: str) -> Estadistic
     return result.scalar_one_or_none()
 
 async def obtener_ranking_global(db: AsyncSession, limite: int = 10) -> list[Estadistica]:
-    query = select(Estadistica).order_by(
+    query = select(Estadistica).options(selectinload(Estadistica.usuario)).order_by(
         desc(Estadistica.num_partidas_ganadas),
         desc(Estadistica.num_soldados_matados)
     ).limit(limite)

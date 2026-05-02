@@ -12,6 +12,12 @@ from app.models.partida import (
     EstadoJugador
 )
 from app.schemas.partida import PartidaCreate
+from app.models.usuario import User
+
+
+async def obtener_avatares(db: AsyncSession, usernames: list[str]) -> dict[str, str]:
+    result = await db.execute(select(User).where(User.username.in_(usernames)))
+    return {u.username: u.avatar or "/static/perfiles/default.png" for u in result.scalars().all()}
 
 
 # ----------------------------------------------------------------------------

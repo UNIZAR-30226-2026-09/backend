@@ -174,11 +174,13 @@ async def listar_amigos_activos(
         nombre_amigo = relacion.user_2 if relacion.user_1 == usuario_actual.username else relacion.user_1
         
         estado = manager.obtener_estado_conexion(nombre_amigo)
-        
+        user = await db.get(User, nombre_amigo)
+
         amigos_activos.append(
             AmigoActivoRead(
                 username=nombre_amigo,
-                estado_conexion=estado
+                estado_conexion=estado,
+                avatar=user.avatar if user else "/static/perfiles/default.png"
             )
         )
         

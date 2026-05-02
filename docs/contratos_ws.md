@@ -112,7 +112,11 @@ Para establecer la conexión, el cliente debe abrir un socket hacia la siguiente
         },
         "turno_de": "jugador_1",
         "fase_actual": "refuerzo",
-        "fin_fase_utc": "2026-03-22T15:30:00Z"
+        "fin_fase_utc": "2026-03-22T15:30:00Z",
+        "avatares": {
+            "jugador_1": "/static/perfiles/avatar1.png",
+            "jugador_2": "/static/perfiles/default.png"
+        }
     }
     ```
 
@@ -150,7 +154,8 @@ Para establecer la conexión, el cliente debe abrir un socket hacia la siguiente
     ```json
     {
         "tipo_evento": "NUEVO_JUGADOR",
-        "jugador": "nombre"
+        "jugador": "nombre",
+        "avatar": "/static/perfiles/avatar1.png"
     }
     ```
 
@@ -231,9 +236,9 @@ Para recibir notificaciones sociales fuera de una partida, el cliente debe abrir
     ```
 * **Nota:** `resultado` es `null` o está ausente para habilidades sin efecto inmediato reportable.
 
-### 5.2. Actualización de Territorio (Efectos Persistentes)
+### 5.2. Actualización de Territorio
 * **Dirección:** Servidor -> Todos los Clientes (Broadcast)
-* **Descripción:** Evento crítico enviado cuando un territorio cambia debido a efectos persistentes (bajas por enfermedad, expansión de virus, expiración de efectos, etc.).
+* **Descripción:** Evento enviado cuando el estado de un territorio cambia. Se emite en los siguientes casos: efectos persistentes (bajas por enfermedad, expansión de virus, expiración de efectos), inicio de trabajo o investigación en un territorio (refleja el nuevo `estado_bloqueo`), y finalización de trabajo o investigación.
 * **Payload recibido:**
     ```json
     {

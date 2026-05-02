@@ -145,18 +145,21 @@ async def unirse_partida(
     await notifier.notificar_nuevo_jugador(
         partida_id=partida.id,
         username=usuario_actual.username,
+        avatar=usuario_actual.avatar or "/static/perfiles/default.png",
     )
 
     jugadores_actualizados = await crud_partidas.obtener_jugadores_partida(db, partida.id)
-    
+
     if len(jugadores_actuales) == 0:
         await crud_partidas.actualizar_creador_partida(db, partida, usuario_actual.username)
 
+    avatares = await crud_partidas.obtener_avatares(db, [j.usuario_id for j in jugadores_actualizados])
 
     return UnirseOut(
         mensaje="Unido a la partida",
         jugadores_en_sala=jugadores_actualizados,
-        creador=partida.creador
+        creador=partida.creador,
+        avatares=avatares,
     )
 
 @router.post("/{partida_id}/abandonar", response_model=AbandonarOut, status_code=status.HTTP_200_OK)
@@ -262,12 +265,15 @@ async def empezar_partida(
     tareas_en_segundo_plano.add(tarea_inicio)
     tarea_inicio.add_done_callback(tareas_en_segundo_plano.discard)
 
+    avatares_inicio = await crud_partidas.obtener_avatares(db, [j.usuario_id for j in jugadores])
+
     await notifier.enviar_inicio_partida(
         partida_id=partida.id,
         mapa=mapa_repartido,
         jugadores=nuevo_estado.jugadores,
         turno_de=jugador_turno_1,
-        fin_fase=fin_fase
+        fin_fase=fin_fase,
+        avatares=avatares_inicio,
     )
 
     return {
@@ -323,12 +329,15 @@ async def ver_estado_partida(
     if not estado:
         raise HTTPException(status_code=404, detail="No hay estado para esta partida")
 
+    avatares = await crud_partidas.obtener_avatares(db, list(estado.jugadores.keys()))
+
     return {
         "turno_de": estado.user_turno_actual,
         "fase_actual": estado.fase_actual.value,
         "fin_fase_utc": estado.fin_fase_actual,
         "mapa": estado.mapa,
-        "jugadores": estado.jugadores
+        "jugadores": estado.jugadores,
+        "avatares": avatares,
     }
 
 @router.post("/{code}/reanudar", response_model=AccionPausaOut, status_code=status.HTTP_200_OK)

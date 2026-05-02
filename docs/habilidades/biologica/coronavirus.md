@@ -8,7 +8,8 @@ Esta habilidad infecta un territorio objetivo, causando un impacto inicial de ba
 ## Mecánicas de Juego
 - **Impacto Inicial:** Aplica un daño porcentual inmediato al lanzarse (parámetro dano_inicial).
 - **Daño Recurrente:** Resta un porcentaje de tropas (parámetro dano_recurrente) al inicio del turno del afectado.
-- **Expansión:** Al finalizar la ronda, existe una probabilidad (parámetro probabilidad_expansion) de contagiar a vecinos.
+- **Expansión:** Al finalizar la ronda, existe una probabilidad (parámetro probabilidad_expansion) de contagiar a vecinos. Un territorio solo expande si va a sobrevivir el siguiente tick de daño — si sus tropas quedarían en 0 tras el daño recurrente, no contagia.
+- **Duración Heredada:** Los territorios contagiados heredan la duración restante del foco de origen en el momento del contagio, no la duración máxima.
 - **Duración Dinámica:** Se calcula como la duración base multiplicada por el número de jugadores.
 
 ## Integración con WebSockets
