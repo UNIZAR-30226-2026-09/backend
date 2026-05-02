@@ -3,7 +3,7 @@ from sqlalchemy import select, desc, func, or_, and_
 from app.models.usuario import Estadistica
 
 async def inicializar_estadisticas(db: AsyncSession, nombre_user: str) -> Estadistica:
-    stats = Estadistica(nombre_user=nombre_user, conquistas_por_region={})
+    stats = Estadistica(nombre_user=nombre_user, conquistas_por_comarca={})
     db.add(stats)
     await db.commit()
     await db.refresh(stats)
