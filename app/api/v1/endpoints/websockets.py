@@ -1,11 +1,9 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from app.core.ws_manager import manager
 from app.core.event_handler import process_event
 from app.core.notifier import notifier
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.db.session import AsyncSessionLocal, get_db
+from app.db.session import AsyncSessionLocal
 from app.crud.crud_partidas import obtener_estado_partida
 from app.crud.crud_amigos import obtener_nombres_amigos
 
@@ -15,12 +13,13 @@ router = APIRouter()
 async def websocket_global_endpoint(
     websocket: WebSocket, 
     username: str, 
-    db: AsyncSession = Depends(get_db)
 ):
     # Conectamos al manager global
     await manager.connect_global(websocket, username)
     
-    amigos = await obtener_nombres_amigos(db, username)
+    async with AsyncSessionLocal() as db:
+        amigos = await obtener_nombres_amigos(db, username)
+
     for amigo in amigos:
         if amigo in manager.global_connections:
             await manager.global_connections[amigo].send_json({
