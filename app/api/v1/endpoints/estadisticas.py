@@ -46,7 +46,7 @@ async def obtener_mis_estadisticas(
         stats = await crud_estadisticas.inicializar_estadisticas(db, usuario_actual.username)
 
     posicion = await crud_estadisticas.obtener_posicion_ranking(db, usuario_actual.username)
-    return EstadisticaRead.model_validate(stats).model_copy(update={"posicion_ranking": posicion})
+    return EstadisticaRead.model_validate(stats).model_copy(update={"posicion_ranking": posicion, "avatar": usuario_actual.avatar})
 
 # ----------------------------------------------------------------------------
 # 3. OBTENER ESTADÍSTICAS DE OTRO USUARIO
@@ -65,4 +65,4 @@ async def obtener_estadisticas_usuario(
             status_code=status.HTTP_404_NOT_FOUND, 
             detail=f"Estadísticas no encontradas para el usuario '{username}'"
         )
-    return stats
+    return EstadisticaRead.model_validate(stats).model_copy(update={"avatar": stats.usuario.avatar})

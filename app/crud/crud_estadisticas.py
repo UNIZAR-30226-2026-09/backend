@@ -11,7 +11,7 @@ async def inicializar_estadisticas(db: AsyncSession, nombre_user: str) -> Estadi
     return stats
 
 async def obtener_estadisticas(db: AsyncSession, nombre_user: str) -> Estadistica | None:
-    query = select(Estadistica).where(Estadistica.nombre_user == nombre_user)
+    query = select(Estadistica).options(selectinload(Estadistica.usuario)).where(Estadistica.nombre_user == nombre_user)
     result = await db.execute(query)
     return result.scalar_one_or_none()
 

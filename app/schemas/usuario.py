@@ -41,6 +41,7 @@ class EstadisticaRead(BaseModel):
     num_soldados_matados: int
     conquistas_por_comarca: dict  = Field(exclude=True)
     posicion_ranking: int | None = None
+    avatar: Optional[str] = "/static/perfiles/default.png"
 
     @computed_field
     @property
