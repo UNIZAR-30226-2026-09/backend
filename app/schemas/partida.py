@@ -80,6 +80,7 @@ class VerEstadoPartidaOut(BaseModel):
     fin_fase_utc: datetime
     mapa: Dict[str, Any]
     jugadores: Dict[str, Any]
+    avatares: Dict[str, str] = {}
 
 class PartidaActivaOut(BaseModel):
     tiene_partida_activa: bool
