@@ -24,7 +24,7 @@ from app.api.deps import obtener_usuario_actual
 from app.models.usuario import User
 from app.db.session import get_db
 from app.crud import crud_partidas, crud_combates
-from app.crud.crud_logs import obtener_logs
+from app.crud.crud_logs import obtener_logs, registrar_log
 
 # Cosas nuevas para empezar la partida
 from app.core.map_state import game_map_state
@@ -195,6 +195,15 @@ async def abandonar_partida(
         await crud_partidas.eliminar_partida(db, partida_id)
         return AbandonarOut(mensaje="Has abandonado la partida. La sala ha sido cerrada.")
     else:
+        await registrar_log(
+            db=db,
+            partida_id=partida_id,
+            turno_numero=0,
+            fase="lobby",
+            tipo_evento="abandonar_partida",
+            user=usuario_actual.username,
+            datos={"usuario": usuario_actual.username},
+        )
         await notifier.notificar_desconexion(partida_id, usuario_actual.username)
         return AbandonarOut(mensaje="Has abandonado la partida")
 
@@ -276,9 +285,19 @@ async def empezar_partida(
         avatares=avatares_inicio,
     )
 
+    await registrar_log(
+        db=db,
+        partida_id=partida.id,
+        turno_numero=0,
+        fase="inicio",
+        tipo_evento="PARTIDA_INICIADA",
+        user=usuario_actual.username,
+        datos={"jugadores": jugadores_ids, "primer_turno": jugador_turno_1},
+    )
+
     return {
-        "mensaje": "¡Aragón está en guerra!", 
-        "partida_id": partida.id, 
+        "mensaje": "¡Aragón está en guerra!",
+        "partida_id": partida.id,
         "turno_de": jugador_turno_1,
         "fase": "refuerzo"
     }
@@ -554,6 +573,20 @@ async def fortificar_tropas(
     
     await crud_combates.guardar_estado_partida(db, estado)
 
+    await registrar_log(
+        db=db,
+        partida_id=partida_id,
+        turno_numero=estado.turno_actual,
+        fase=estado.fase_actual.value,
+        tipo_evento="MOVIMIENTO_CONQUISTA",
+        user=usuario_actual.username,
+        datos={
+            "origen": datos.origen,
+            "destino": datos.destino,
+            "tropas": datos.tropas,
+        },
+    )
+
     await notifier.enviar_movimiento_conquista(
         partida_id=partida_id,
         origen_id=datos.origen,
@@ -596,6 +629,16 @@ async def asignar_trabajo(partida_id: int, datos: AsignarTrabajoIn, usuario_actu
     flag_modified(estado, "mapa")
     await db.commit()
 
+    await registrar_log(
+        db=db,
+        partida_id=partida_id,
+        turno_numero=estado.turno_actual,
+        fase=estado.fase_actual.value,
+        tipo_evento="TERRITORIO_ACTUALIZADO",
+        user=jugador_id,
+        datos={"territorio": datos.territorio_id},
+    )
+
     await notifier.enviar_actualizacion_territorio(partida_id, datos.territorio_id, estado.mapa[datos.territorio_id])
 
     return {"mensaje": f"El territorio {datos.territorio_id} se ha puesto a trabajar."}
@@ -620,6 +663,16 @@ async def asignar_investigacion(partida_id: int, datos: AsignarInvestigacionIn, 
     flag_modified(estado, "jugadores")
     flag_modified(estado, "mapa")
     await db.commit()
+
+    await registrar_log(
+        db=db,
+        partida_id=partida_id,
+        turno_numero=estado.turno_actual,
+        fase=estado.fase_actual.value,
+        tipo_evento="investigar",
+        user=jugador_id,
+        datos={"territorio": datos.territorio_id, "habilidad": datos.habilidad_id},
+    )
 
     await notifier.enviar_actualizacion_territorio(partida_id, datos.territorio_id, estado.mapa[datos.territorio_id])
 
@@ -661,6 +714,16 @@ async def comprar_tecnologia(partida_id: int, datos: ComprarTecnologiaIn, usuari
 
     flag_modified(estado, "jugadores")
     await db.commit()
+
+    await registrar_log(
+        db=db,
+        partida_id=partida_id,
+        turno_numero=estado.turno_actual,
+        fase=estado.fase_actual.value,
+        tipo_evento="comprar_tecnologia",
+        user=jugador_id,
+        datos={"tecnologia": tech_id, "precio": precio},
+    )
 
     return {"mensaje": f"Has adquirido {tech_id} con éxito. Te quedan {jugador['monedas']} monedas."}
 

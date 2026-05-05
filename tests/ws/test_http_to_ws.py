@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -223,6 +224,8 @@ async def test_http_ataque_emite_ws(monkeypatch):
 async def test_http_mover_conquista_emite_ws(monkeypatch):
     async def fake_obtener_estado_partida(db, partida_id):
         class Estado:
+            turno_actual = 1
+            fase_actual = type("Fase", (), {"value": "ataque_convencional"})()
             mapa = {
                 "A": {"owner_id": "p1", "units": 5},
                 "B": {"owner_id": "p1", "units": 1},
@@ -248,6 +251,7 @@ async def test_http_mover_conquista_emite_ws(monkeypatch):
 
     monkeypatch.setattr(combates_endpoint, "obtener_estado_partida", fake_obtener_estado_partida)
     monkeypatch.setattr(combates_endpoint.crud_combates, "guardar_estado_partida", fake_guardar_estado_partida)
+    monkeypatch.setattr(combates_endpoint, "registrar_log", AsyncMock())
     monkeypatch.setattr(manager, "broadcast", spy_broadcast)
 
     usuario = User(username="p1", email="p1@example.com", passwd_hash="x")
@@ -274,6 +278,8 @@ async def test_http_mover_conquista_emite_ws(monkeypatch):
 async def test_http_colocar_tropas_emite_ws(monkeypatch):
     async def fake_obtener_estado_partida(db, partida_id):
         class Estado:
+            turno_actual = 1
+            fase_actual = type("Fase", (), {"value": "refuerzo"})()
             mapa = {"A": {"owner_id": "p1", "units": 1}}
             jugadores = {"p1": {"tropas_reserva": 5}}
         return Estado()
@@ -298,6 +304,7 @@ async def test_http_colocar_tropas_emite_ws(monkeypatch):
     monkeypatch.setattr(combates_endpoint.crud_combates, "guardar_estado_partida", fake_guardar_estado_partida)
     monkeypatch.setattr(combates_endpoint, "validar_colocacion_tropas", fake_validar_colocacion_tropas)
     monkeypatch.setattr(combates_endpoint, "resolver_colocacion_tropas", fake_resolver_colocacion_tropas)
+    monkeypatch.setattr(combates_endpoint, "registrar_log", AsyncMock())
     monkeypatch.setattr(manager, "broadcast", spy_broadcast)
 
     usuario = User(username="p1", email="p1@example.com", passwd_hash="x")

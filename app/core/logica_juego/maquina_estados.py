@@ -94,18 +94,22 @@ async def avanzar_fase(
         # Verificamos fin de investigacion / trabajo en el inicio del turno
         await resolver_gestion_ronda(estado, estado.user_turno_actual)
 
-        await asignar_tropas_reserva(estado, db)
+        tropas_recibidas, motivo_refuerzos = await asignar_tropas_reserva(estado, db)
 
         estado.turno_actual += 1
-        
+
         await registrar_log(
             db=db,
             partida_id=partida_id,
             turno_numero=estado.turno_actual,
             fase=FasePartida.REFUERZO.value,
-            tipo_evento="cambio_turno",
+            tipo_evento="CAMBIO_FASE",
             user=estado.user_turno_actual,
-            datos={"turno_de": estado.user_turno_actual},
+            datos={
+                "turno_de": estado.user_turno_actual,
+                "tropas_recibidas": tropas_recibidas,
+                "motivo_refuerzos": motivo_refuerzos,
+            },
         )
     
     
@@ -233,7 +237,7 @@ async def asignar_tropas_reserva(estado: EstadoPartida, db: AsyncSession) -> int
             fin_fase_utc=estado.fin_fase_actual.isoformat()
         )
 
-        return 0
+        return 0, "sancion"
 
     territorios_propios = obtener_territorios_jugador(estado.mapa, estado.user_turno_actual)
 
@@ -289,7 +293,7 @@ async def asignar_tropas_reserva(estado: EstadoPartida, db: AsyncSession) -> int
         fin_fase_utc=estado.fin_fase_actual.isoformat()
     )
 
-    return tropas_recibidas
+    return tropas_recibidas, motivo_especial
 
 def actualizar_regiones_dominadas(estado: EstadoPartida, jugador_id: str):
     """Al final del turno, registra las regiones que el jugador controla completamente."""

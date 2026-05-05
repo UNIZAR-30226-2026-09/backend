@@ -1,7 +1,7 @@
+from datetime import datetime, timezone
+
 from app.core.notifier import notifier
 from app.core.logica_juego.constantes import MENSAJES_CHAT_PERMITIDOS, REACCIONES_CHAT_PERMITIDAS
-from app.crud import crud_logs
-from app.db.session import AsyncSessionLocal
 
 async def process_event(id_partida: int, username: str, data: dict):
     
@@ -38,18 +38,7 @@ async def handle_chat(id_partida: int, username: str, data: dict):
         print(f"[Aviso] Formato de chat inválido de {username}")
         return
 
-    print(f"[CHAT LOG] {username} en Partida {id_partida} envió {tipo_chat}: {contenido}")
+    print(f"[CHAT] {username} en Partida {id_partida} envió {tipo_chat}: {contenido}")
 
-    async with AsyncSessionLocal() as db:
-        nuevo_log = await crud_logs.registrar_log(
-            db=db,
-            partida_id=id_partida,
-            turno_numero=0, 
-            fase="chat",
-            tipo_evento=f"chat_{tipo_chat}",
-            user=username,
-            datos={"texto": contenido}
-        )
-        timestamp_str = str(nuevo_log.timestamp)
-
+    timestamp_str = datetime.now(timezone.utc).isoformat()
     await notifier.enviar_chat(id_partida, username, tipo_chat, contenido, timestamp_str)

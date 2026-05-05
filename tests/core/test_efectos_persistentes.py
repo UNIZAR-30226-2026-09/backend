@@ -98,8 +98,8 @@ async def test_sanciones_bloquean_refuerzos(mock_territorios, mock_actualizar, m
     mock_territorios.return_value = ["T1", "T2", "T3", "T4", "T5", "T6"] # Debería recibir 2 (pero minimo 3)
     
     db_mock = MagicMock()
-    tropas = await asignar_tropas_reserva(estado_mock, db_mock)
-    
+    tropas, motivo = await asignar_tropas_reserva(estado_mock, db_mock)
+
     assert tropas == 0
     mock_actualizar.assert_called_with(db_mock, estado_mock, "jugador1", 0)
 

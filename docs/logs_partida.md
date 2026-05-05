@@ -2,6 +2,8 @@
 
 Este documento describe el sistema de historial de eventos de una partida. Permite al frontend mostrar un registro de lo ocurrido en turnos anteriores, útil para jugadores que se reconectan o quieren revisar el desarrollo de la partida.
 
+> **Nota para el frontend:** la mayoría de `tipo_evento` coinciden exactamente con los eventos WebSocket, por lo que se puede reutilizar la misma función `renderEvento()` para ambas fuentes. Los eventos exclusivos del log (sin WS equivalente) están marcados con 🗂️.
+
 ---
 
 ## Endpoint
@@ -26,7 +28,7 @@ GET /api/v1/partidas/{partida_id}/logs?limit=50
   "turno_numero": 3,
   "fase": "ataque_convencional",
   "timestamp": "2026-04-26T12:34:56Z",
-  "tipo_evento": "ataque_convencional",
+  "tipo_evento": "ATAQUE_RESULTADO",
   "user": "pablo",
   "datos": { ... }
 }
@@ -47,18 +49,42 @@ GET /api/v1/partidas/{partida_id}/logs?limit=50
 
 ## Tipos de evento y su `datos`
 
-### `cambio_turno`
-Se genera al inicio de cada turno nuevo.
+### `PARTIDA_INICIADA`
+Se genera cuando el host arranca la partida.
 
 ```json
 {
-  "turno_de": "pablo"
+  "jugadores": ["pablo", "maria", "juan"],
+  "primer_turno": "pablo"
 }
 ```
 
 ---
 
-### `ataque_convencional`
+### `CAMBIO_FASE`
+Se genera en dos situaciones distintas con `datos` diferentes:
+
+**Al cambiar de turno** (automático o por timer):
+```json
+{
+  "turno_de": "pablo",
+  "tropas_recibidas": 5,
+  "motivo_refuerzos": "normal"
+}
+```
+Valores posibles de `motivo_refuerzos`: `normal`, `academia`, `propaganda`, `sancion`.
+
+**Al pasar fase manualmente** (el jugador pulsa "pasar fase"):
+```json
+{
+  "fase_anterior": "refuerzo",
+  "fase_nueva": "ataque_convencional"
+}
+```
+
+---
+
+### `ATAQUE_RESULTADO`
 Se genera cada vez que un jugador ejecuta un ataque convencional.
 
 ```json
@@ -68,19 +94,36 @@ Se genera cada vez que un jugador ejecuta un ataque convencional.
   "defensor": "maria",
   "bajas_atacante": 0,
   "bajas_defensor": 1,
-  "victoria": true
+  "victoria": true,
+  "tropas_restantes_origen": 3,
+  "tropas_restantes_defensor": 0
 }
 ```
 
 ---
 
-### `conquista`
-Se genera cuando un ataque resulta en victoria y el territorio cambia de dueño. Siempre va acompañado de un `ataque_convencional` en el mismo turno.
+### `conquista` 🗂️
+Se genera cuando un ataque resulta en victoria y el territorio cambia de dueño. Siempre acompañado de un `ATAQUE_RESULTADO` en el mismo turno.
 
 ```json
 {
   "territorio_conquistado": "huesca",
   "anterior_dueno": "maria"
+}
+```
+
+---
+
+### `MOVIMIENTO_CONQUISTA`
+Se genera en dos situaciones (mismo mensaje en ambas):
+- Cuando el jugador mueve tropas al territorio recién conquistado.
+- Cuando el jugador fortifica (mueve tropas entre territorios propios en fase de fortificación).
+
+```json
+{
+  "origen": "zaragoza",
+  "destino": "huesca",
+  "tropas": 2
 }
 ```
 
@@ -93,31 +136,93 @@ Se genera cuando un jugador lanza una tecnología o arma especial.
 {
   "tipo_ataque": "MISIL_CRUCERO",
   "origen": "zaragoza",
-  "destino": "lerida"
+  "destino": "lerida",
+  "resultado": { ... }
 }
 ```
 
-Los valores posibles de `tipo_ataque` están documentados en [`habilidades/`](habilidades/).
+Los valores posibles de `tipo_ataque` y la estructura de `resultado` están documentados en [`habilidades/`](habilidades/).
 
 ---
 
-### `jugador_eliminado`
+### `TROPAS_COLOCADAS`
+Se genera cuando un jugador coloca tropas de su reserva en un territorio.
+
+```json
+{
+  "territorio": "zaragoza",
+  "cantidad": 3
+}
+```
+
+---
+
+### `trabajar` 🗂️
+Se genera cuando un jugador asigna un territorio a producir monedas.
+
+```json
+{
+  "territorio": "zaragoza"
+}
+```
+
+---
+
+### `investigar` 🗂️
+Se genera cuando un jugador asigna un territorio a investigar una habilidad.
+
+```json
+{
+  "territorio": "zaragoza",
+  "habilidad": "MISIL_CRUCERO"
+}
+```
+
+---
+
+### `comprar_tecnologia` 🗂️
+Se genera cuando un jugador compra una tecnología con sus monedas.
+
+```json
+{
+  "tecnologia": "MISIL_CRUCERO",
+  "precio": 3
+}
+```
+
+---
+
+### `JUGADOR_ELIMINADO`
 Se genera cuando un jugador pierde su último territorio.
 
 ```json
 {
-  "eliminado": "maria"
+  "eliminado": "maria",
+  "por_quien": "pablo"
+}
+```
+
+`por_quien` puede ser `null` si la eliminación fue causada por un efecto (enfermedad, etc.) y no por un ataque directo.
+
+---
+
+### `PARTIDA_FINALIZADA`
+Se genera cuando la partida termina.
+
+```json
+{
+  "ganador": "pablo"
 }
 ```
 
 ---
 
-### `fin_partida`
-Se genera cuando la partida termina. El campo `user` contiene al ganador.
+### `abandonar_partida` 🗂️
+Se genera cuando un jugador no-host abandona la sala durante el lobby.
 
 ```json
 {
-  "ganador": "pablo"
+  "usuario": "maria"
 }
 ```
 
@@ -146,7 +251,7 @@ Se genera cuando la partida termina. El campo `user` contiene al ganador.
     "turno_numero": 4,
     "fase": "ataque_convencional",
     "timestamp": "2026-04-26T12:39:58Z",
-    "tipo_evento": "ataque_convencional",
+    "tipo_evento": "ATAQUE_RESULTADO",
     "user": "pablo",
     "datos": {
       "origen": "zaragoza",
@@ -154,7 +259,9 @@ Se genera cuando la partida termina. El campo `user` contiene al ganador.
       "defensor": "maria",
       "bajas_atacante": 0,
       "bajas_defensor": 1,
-      "victoria": true
+      "victoria": true,
+      "tropas_restantes_origen": 3,
+      "tropas_restantes_defensor": 0
     }
   },
   {
@@ -163,10 +270,12 @@ Se genera cuando la partida termina. El campo `user` contiene al ganador.
     "turno_numero": 4,
     "fase": "refuerzo",
     "timestamp": "2026-04-26T12:38:00Z",
-    "tipo_evento": "cambio_turno",
+    "tipo_evento": "CAMBIO_FASE",
     "user": "pablo",
     "datos": {
-      "turno_de": "pablo"
+      "turno_de": "pablo",
+      "tropas_recibidas": 5,
+      "motivo_refuerzos": "normal"
     }
   }
 ]

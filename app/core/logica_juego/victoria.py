@@ -37,9 +37,9 @@ async def resolver_eliminaciones(
             partida_id=partida_id,
             turno_numero=turno_actual,
             fase=fase_actual,
-            tipo_evento="jugador_eliminado",
+            tipo_evento="JUGADOR_ELIMINADO",
             user=atacante_id or defensor_id,
-            datos={"eliminado": defensor_id},
+            datos={"eliminado": defensor_id, "por_quien": atacante_id},
         )
 
         ganador = await verificar_y_finalizar_partida(db, partida_id)
@@ -50,7 +50,7 @@ async def resolver_eliminaciones(
                 partida_id=partida_id,
                 turno_numero=turno_actual,
                 fase=fase_actual,
-                tipo_evento="fin_partida",
+                tipo_evento="PARTIDA_FINALIZADA",
                 user=ganador,
                 datos={"ganador": ganador},
             )

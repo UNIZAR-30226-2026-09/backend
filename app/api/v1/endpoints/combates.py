@@ -105,7 +105,7 @@ async def ejecutar_ataque(
         partida_id=partida_id,
         turno_numero=estado_partida.turno_actual,
         fase=estado_partida.fase_actual.value,
-        tipo_evento="ataque_convencional",
+        tipo_evento="ATAQUE_RESULTADO",
         user=atacante_id,
         datos={
             "origen": ataque_in.territorio_origen_id,
@@ -114,6 +114,8 @@ async def ejecutar_ataque(
             "bajas_atacante": resultado.bajas_atacante,
             "bajas_defensor": resultado.bajas_defensor,
             "victoria": resultado.victoria_atacante,
+            "tropas_restantes_origen": resultado.tropas_restantes_origen,
+            "tropas_restantes_defensor": resultado.tropas_restantes_defensor,
         },
     )    
 
@@ -205,6 +207,20 @@ async def mover_tropas_conquista(
 
     await crud_combates.guardar_estado_partida(db, estado_partida)
 
+    await registrar_log(
+        db=db,
+        partida_id=partida_id,
+        turno_numero=estado_partida.turno_actual,
+        fase=estado_partida.fase_actual.value,
+        tipo_evento="MOVIMIENTO_CONQUISTA",
+        user=jugador_id,
+        datos={
+            "origen": origen_id,
+            "destino": destino_id,
+            "tropas": datos.tropas,
+        },
+    )
+
     # Avisamos al front
     await notifier.enviar_movimiento_conquista(
         partida_id, origen_id, destino_id, datos.tropas, jugador_id
@@ -230,20 +246,36 @@ async def pasar_fase_manual(
     Retorna la información actualizada de la nueva fase y a quién corresponde el turno.
     """
     estado_partida = await obtener_estado_partida(db, partida_id)
-    
+
     if estado_partida.user_turno_actual != usuario_actual.username:
         raise HTTPException(403, "Quieto ahí, no es tu turno")
+
+    fase_anterior = estado_partida.fase_actual.value
+    turno_antes = estado_partida.turno_actual
 
     try:
         nuevo_estado = await avanzar_fase(partida_id, db, estado_partida.fase_actual)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))    
-    
+        raise HTTPException(status_code=400, detail=str(e))
+
     if not nuevo_estado:
         raise HTTPException(400, "Error al avanzar la fase")
 
+    await registrar_log(
+        db=db,
+        partida_id=partida_id,
+        turno_numero=turno_antes,
+        fase=fase_anterior,
+        tipo_evento="CAMBIO_FASE",
+        user=usuario_actual.username,
+        datos={
+            "fase_anterior": fase_anterior,
+            "fase_nueva": nuevo_estado.fase_actual.value,
+        },
+    )
+
     return {
-        "mensaje": "Fase completada", 
+        "mensaje": "Fase completada",
         "nueva_fase": nuevo_estado.fase_actual.value,
         "turno_de": nuevo_estado.user_turno_actual
     }
@@ -299,6 +331,19 @@ async def colocar_tropas_reserva(
     estado_partida.mapa[datos.territorio_id] = t_destino.model_dump()
     estado_partida.jugadores[jugador_id] = jugador_estado.model_dump()
     await crud_combates.guardar_estado_partida(db, estado_partida)
+
+    await registrar_log(
+        db=db,
+        partida_id=partida_id,
+        turno_numero=estado_partida.turno_actual,
+        fase=estado_partida.fase_actual.value,
+        tipo_evento="TROPAS_COLOCADAS",
+        user=jugador_id,
+        datos={
+            "territorio": datos.territorio_id,
+            "cantidad": datos.tropas,
+        },
+    )
 
     await notifier.enviar_tropas_colocadas(
         partida_id, jugador_id, datos.territorio_id, datos.tropas, t_destino.units
@@ -402,6 +447,7 @@ async def ejecutar_ataque_especial(
             "tipo_ataque": ataque_in.tipo_ataque,
             "origen": ataque_in.origen,
             "destino": ataque_in.destino,
+            "resultado": resultado_accion,
         },
     )
 

@@ -61,6 +61,7 @@ async def test_asignar_tropas_reserva_bonus_regiones():
     # ---------------------------------------------------------
     # 4. VERIFICAR EL RESULTADO MATEMÁTICO
     # ---------------------------------------------------------
-    assert tropas_totales == 5, f"Error: Se esperaban 5 tropas, pero calculó {tropas_totales}"
+    tropas, _ = tropas_totales
+    assert tropas == 5, f"Error: Se esperaban 5 tropas, pero calculó {tropas}"
     
     print("\n✅ Test de Bonus por Región superado: ¡Las matemáticas no fallan!")
